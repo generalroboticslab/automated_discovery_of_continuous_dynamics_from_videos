@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>smooth results</title>
+  </head>
+  <body>
+    <h1>Model: {{ model_name }}</h1>
+    <h2>Hyperparameters</h2>
+    <table>
+      {% for key, value in results['hparams'].items() %}
+      <tr>
+          <th> {{ key }} </th>
+          <td> {{ value }} </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+
+    <h2>NSVF Visualizations</h2>
+    <table>
+      {% for i in range(results['num_mlp_visualizations'])%}
+      <td>
+        <table>
+      <tr> <td>{{ results['mlp_visualizations'][i] }}</td></tr>
+      <tr>
+      <td>
+        <img src="../static/mlp_visualization_{{ i }}.png" style="max-width: 100%; height: auto;">
+      </td>
+      </tr>
+    </table>
+    </td>
+      {% endfor %}
+    </table>
+
+    <h2>NSVF Predicted Trajectories</h2>
+    <div>Post Filter Remaining # Trajectories</div>
+    <div>{{ results['num_filtered'] }} / {{ results['total'] }}</div>
+    <table>
+      {% for i in range(3) %}
+      <tr>
+        {% for j in range(5) %}
+        <td>
+          Video {{ results['filenames'][5*i+j][:-4] }}
+          <img src="../static/mlp_traj_{{ i*5+j }}.png" style="max-width: 100%; height: auto;">
+          <img src="../static/mlp_time_series_{{ i*5+j }}.png" style="max-width: 100%; height: auto;">
+          <hr>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </table>
+  
+
+    <h2>NSVF Prediction Rec Loss</h2>
+    <div>Rec Loss: {{ results['mlp_rec_test_loss'] }}</div>
+    <div>Pixel Test Loss: {{ results['mlp_pxl_rec_test_loss_epoch'] }}</div>
+
+    <h2>NSVF Prediction Accuracy</h2>
+    <img src="../static/mlp_long_term_prediction.png" style="max-width: 100%; height: auto;">
+
+    <h2>NSVF Predicted Equilibrium Points</h2>
+    <table border=1 frame=void rules=rows>
+      {% for i in range(results['num_eq'])%}
+      <tr>
+        <td>
+          <table>
+            <tr>
+              <td>
+                <img src="../static/eq_{{ i }}_0.png" style="max-width: 100%; height: auto;"> 
+                <img src="../static/eq_{{ i }}_1.png" style="max-width: 100%; height: auto;"> 
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td>
+          <table>
+          <tr>
+            <td>
+              Root Finding Success: {{results['eq_points']['successes'][i]}}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              Point:  {{results['eq_points']['roots'][i]}}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              Guess:  {{results['eq_points']['guesses'][i]}}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              Jacobian:  {{results['eq_points']['jacobians'][i]}}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              Eigenvalue:  {{results['eq_points']['eigenValues'][i]}}
+            </td>
+          </tr>
+          <!-- <tr>
+            <td>
+              Mean Distance:  {{results['mlp_eq_distances_mean'][i]}}
+            </td>
+          </tr> -->
+          <tr>
+            <td>
+              Max Distance:  {{results['mlp_eq_distances_max'][i]}}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              Stability:  {{results['eq_points']['stabilities'][i]}}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              Delta per Epsilon:  {{results['eq_points']['delta_per_epsilon'][i]}}
+            </td>
+          </tr>
+          <tr>
+            <td>
+              Decoder Validity: {{results['eq_points']['validity'][i]}}
+            </td>
+          </tr>
+          </table>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+  </body>
+</html>

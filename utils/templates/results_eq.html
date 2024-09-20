@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>smooth results</title>
+  </head>
+  <body>
+    <h1>Dataset: {{dataset}}</h1>
+    <h2>NSVF Predicted Equilibrium Points</h2>
+    <table border=1 frame=void rules=rows>
+        {% for i in range(3)%}
+        <h2>{{smooth_models[i]}}</h2>
+        <table border=1 frame=void rules=rows>
+        {% for j in range(eqs[i]['num_eq'])%}
+        <tr>
+            <td>
+            <table>
+                <tr>
+                <td>
+                    <img src="/static/eq_{{i}}_{{ j }}_0.png" style="max-width: 100%; height: auto;"> 
+                    <img src="/static/eq_{{i}}_{{ j }}_1.png" style="max-width: 100%; height: auto;"> 
+                </td>
+                </tr>
+            </table>
+            </td>
+            <td>
+            <table>
+            <tr>
+                <td>
+                Point:  {{eqs[i]['roots'][j]}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                Guess:  {{eqs[i]['guesses'][j]}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                Jacobian:  {{eqs[i]['jacobians'][j]}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                Eigenvalue:  {{eqs[i]['eigenValues'][j]}}
+                </td>
+            </tr>
+            <!-- <tr>
+                <td>
+                Mean Distance:  {{eqs[i]['mlp_eq_distances_mean'][j]}}
+                </td>
+            </tr> -->
+            <tr>
+                <td>
+                Max Distance:  {{eqs[i]['mlp_eq_distances_max'][j]}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                Stability:  {{eqs[i]['stabilities'][j]}}
+                </td>
+            </tr>
+            <tr>
+                <td>
+                  Delta Per Epsilon:  {{eqs[i]['delta_per_epsilon'][j]}}
+                </td>
+              </tr>
+            <!-- <tr>
+                <td>
+                Decoder Validity: {{eqs[i]['validity'][j]}}
+                </td>
+            </tr> -->
+
+            </table>
+            </td>
+        </tr>
+        {% endfor %}
+        </table>
+    {% endfor %}
+    </table>
+
+  </body>
+</html>

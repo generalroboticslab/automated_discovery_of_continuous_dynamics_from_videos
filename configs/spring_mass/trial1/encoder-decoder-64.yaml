@@ -1,0 +1,21 @@
+lr: 0.001
+seed: 1
+if_cuda: True
+gamma: 0.5
+log_dir: 'logs'
+train_batch: 512
+val_batch: 256
+test_batch: 256
+num_workers: 8
+model_name: 'encoder-decoder-64'
+data_filepath: './data/'
+dataset: 'spring_mass'
+lr_schedule: [20, 50, 100, 300]
+num_gpus: 1
+epochs: 1000
+output_dir: "outputs"
+architecture: "default"
+annealing: False
+model_annealing_list: [] #[['beta', 0, 1.0, 5, 0.5, 'linear']]
+data_annealing_list: [] #[['decay_rate', 0., 0.5, 4, 0.5, 'linear']]
+pretrain_epochs: 0

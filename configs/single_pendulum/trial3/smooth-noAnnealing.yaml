@@ -1,0 +1,42 @@
+seed: 3
+nsv_model_name: "default"
+model_name: 'smooth'
+latent_model_name: 'encoder-decoder-64'
+
+lr: 0.0005
+if_cuda: True
+gamma: 0.5
+log_dir: 'outputs/logs'
+output_dir: 'outputs'
+num_workers: 8
+lr_schedule: [15, 30, 100, 300, 500]
+input_type: 'high-dim-latent'
+
+reconstruct_loss_type: 'high-dim-latent'
+reconstruct_loss_weight: 1.0
+margin: 0.1
+smooth_loss_type:  'neighbor-distance'
+smooth_loss_weight: 64.0
+regularize_loss_type: 'sinkhorn'
+regularize_loss_weight: 64.0
+architecture: "default"
+method: "default"
+annealing: False
+model_annealing_list: [['beta', 0, 1.0, 5, 0.5, 'linear']]
+data_annealing_list: [] #[['decay_rate', 0., 0.5, 4, 0.5, 'linear']]
+pretrain_epochs: 0
+
+#Data Module Parameters
+
+data_filepath: './data/'
+dataset: 'single_pendulum'
+train_batch: 512
+val_batch: 256
+test_batch: 256
+shuffle: True
+
+#Trainer Parameters
+
+num_gpus: 1
+epochs: 1000
+inference_mode: False

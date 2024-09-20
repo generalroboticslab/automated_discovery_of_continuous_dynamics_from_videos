@@ -1,0 +1,36 @@
+seed: 2
+nsv_model_name: 'smooth_2_high-dim-latent_1.0_neighbor-distance-2_1024.0_sinkhorn_8.0_True'
+latent_model_name: 'encoder-decoder-64'
+model_name: 'regressDeeper-discrete'
+reconstruct_loss_weight: 1.0
+pred_length: 56
+
+lr: 0.007086
+if_cuda: True
+gamma: 0.5
+log_dir: 'outputs/logs'
+num_workers: 8
+lr_schedule: [15, 30, 100, 300, 500]
+
+#Data Module Parameters
+
+data_filepath: './data/'
+output_dir: 'outputs'
+dataset: 'double_pendulum'
+decay_rate: 0.5
+train_batch: 512
+val_batch: 256
+test_batch: 256
+shuffle: True
+extra_steps: 0
+filter_data: True
+percentile: 99
+
+#Trainer Parameters
+
+num_gpus: 1
+epochs: 1000
+inference_mode: False
+annealing: True
+pretrain_epochs: 0
+data_annealing_list: [['decay_rate', 0.1, 0.9, 4, 0.5, 'linear']]

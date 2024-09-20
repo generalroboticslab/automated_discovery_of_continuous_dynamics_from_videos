@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>smooth results</title>
+  </head>
+  <body>
+    <h1>Model: {{ model_name }}</h1>
+    <h2>Hyperparameters</h2>
+    <table>
+      {% for key, value in results['hparams'].items() %}
+      <tr>
+          <th> {{ key }} </th>
+          <td> {{ value }} </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h2>Neural state variable state space embedding</h2>
+    <table>
+      {% for i in range(results['num_vars']) %}
+      <td>
+        <table>
+        <tr> <td>{{ results['var_list'][i] }}</td></tr>
+        <tr> <td> <img src="../static/embed_{{ i }}.png" style="max-width: 100%"></td></tr>
+        </table>
+      </td>
+      {% endfor %}
+    </table>
+
+    <h2>Pixel Rec Loss</h2>
+    <div>Pixel Test Loss: {{ results['pxl_rec_test_loss_epoch'] }}</div>
+
+    
+    <h2>Rollout Prediction Accuracy</h2>
+    <img src="../static/long_term_prediction.png" style="max-width: 100%; height: auto;">
+   
+    <h2> Pre Filter Smoothing Metrics</h2>
+    <div>{{ results['pre_filter_variation'] }}</div>
+    <div>{{ results['pre_filter_variation_ord2'] }}</div>
+    <div>{{ results['pre_filter_variation_max_max'] }}</div>
+    <div>{{ results['pre_filter_variation_ord2_max_max'] }}</div>
+    <div>{{ results['pre_filter_variation_mean_max'] }}</div>
+    <div>{{ results['pre_filter_variation_ord2_mean_max'] }}</div>
+    <div>{{ results['pre_filter_deviation'] }}</div>
+    <div>{{ results['pre_filter_tangling'] }}</div>
+    <div>{{ results['pre_filter_tangling_max'] }}</div>
+
+    <h2>Trajectories in neural state variable state space (Before Filtering)</h2>
+    <table>
+      {% for i in range(3) %}
+      <tr>
+        {% for j in range(5) %}
+        <td>
+          Video {{ results['filenames'][5*i+j][:-4] }}
+          <img src="../static/traj_{{ i*5+j }}.png" style="max-width: 100%; height: auto;">
+          <img src="../static/time_series_{{ i*5+j }}.png" style="max-width: 100%; height: auto;">
+          <img src="../static/first_order_{{ i*5+j }}.png" style="max-width: 100%; height: auto;">
+          <hr>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h2> Post Filter Smoothing Metrics</h2>
+    <div>{{ results['post_filter_deviation'] }}</div>
+    <div>{{ results['post_filter_tangling'] }}</div>
+    <div>{{ results['post_filter_tangling_max'] }}</div>
+
+    <h2>Trajectories in neural state variable state space (After Filtering)</h2>
+    <div>Post Filter Remaining # Trajectories</div>
+    <div>{{ results['num_filtered'] }} / {{ results['total'] }}</div>
+    <table>
+      {% for i in range(3) %}
+      <tr>
+        {% for j in range(5) %}
+        <td>
+          Video {{ results['filtered_filenames'][5*i+j][:-4] }}
+          <img src="../static/filtered_traj_{{ i*5+j }}.png" style="max-width: 100%; height: auto;">
+          <img src="../static/filtered_time_series_{{ i*5+j }}.png" style="max-width: 100%; height: auto;">
+          <img src="../static/filtered_first_order_{{ i*5+j }}.png" style="max-width: 100%; height: auto;">
+          <hr>
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </table>
+
+
+  </body>
+</html>
