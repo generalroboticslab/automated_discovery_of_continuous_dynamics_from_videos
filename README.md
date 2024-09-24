@@ -178,11 +178,15 @@ Other-wise, Neural State Variable Autoencoder Models are named as follows
 Neural State Vector Field Models are automatically saved with the following naming scheme
 
 ```
-    model_full_name: {model_name}_{seed}_{nsv_model_name}{_filtered}
+    model_full_name: {model_name}{-discrete}_{seed}_{nsv_model_name}{_filtered}
 ```
+
+```-discrete``` denotes which method to train the neural state vector field (NeuralODE or Reconstructing Finite Difference)
+
 ```nsv_model_name``` is the model full name for the latent reconstruction model that generated the neural state variable trajectories
 
 ```_filtered``` denotes whether or not we filter the data before training.
+
 
 ## Configuration File
 
