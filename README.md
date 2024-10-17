@@ -1,6 +1,6 @@
 # neural-state-variables-v2
 
-# Automatic Discovery of Continuous Dynamics From Videos
+# Automated Discovery of Continuous Dynamics from Videos
 
 [Kuang Huang](),
 [Dong Heon Cho](http://dc3042.github.io),
@@ -9,10 +9,28 @@
 Duke University
 <br>
 
+### [Project Website](http://generalroboticslab.com/SmoothNSV) | [Video](https://youtu.be/4WcVoyspTw0?si=YacImYAG67KXJzKh) | [Paper](https://arxiv.org/abs/2410.11894)
 
 ## Overview
 This repo contains the PyTorch implementation for our paper "Automatic Discovery of Continuous Dynamics From Videos".
 
+![teaser](figures/teaser.gif)
+
+## Citation
+
+If you find our paper or codebase helpful, please consider citing:
+
+```
+@misc{huang2024automateddiscoverycontinuousdynamics,
+      title={Automated Discovery of Continuous Dynamics from Videos}, 
+      author={Kuang Huang and Dong Heon Cho and Boyuan Chen},
+      year={2024},
+      eprint={2410.11894},
+      archivePrefix={arXiv},
+      primaryClass={eess.SY},
+      url={https://arxiv.org/abs/2410.11894}, 
+} 
+```
 
 ## Content
 
@@ -357,3 +375,7 @@ All results are stored under the 'downstream' sub directory
 ## License
 
 This repository is released under the MIT license. See [LICENSE](LICENSE) for additional details.
+
+## Acknowledgment
+
+This work is supported by ARL STRONG program under awards W911NF2320182 and W911NF2220113, by ARO W911NF2410405, by DARPA FoundSci program under award HR00112490372, and DARPA TIAMAT program under award HR00112490419.
