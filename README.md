@@ -1,5 +1,3 @@
-# neural-state-variables-v2
-
 # Automated Discovery of Continuous Dynamics from Videos
 
 [Kuang Huang](),
