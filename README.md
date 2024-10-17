@@ -3,7 +3,9 @@
 [Kuang Huang*](),
 [Dong Heon Cho*](http://dc3042.github.io),
 [Boyuan Chen](http://boyuanchen.com/)
+
 *These authors contributed equally to this work.
+
 <br>
 Duke University
 <br>
