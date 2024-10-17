@@ -1,11 +1,13 @@
 # Automated Discovery of Continuous Dynamics from Videos
 
-[Kuang Huang](),
-[Dong Heon Cho](http://dc3042.github.io),
+[Kuang Huang*](),
+[Dong Heon Cho*](http://dc3042.github.io),
 [Boyuan Chen](http://boyuanchen.com/)
+*These authors contributed equally to this work.
 <br>
 Duke University
 <br>
+
 
 ### [Project Website](http://generalroboticslab.com/SmoothNSV) | [Video](https://youtu.be/4WcVoyspTw0?si=YacImYAG67KXJzKh) | [Paper](https://arxiv.org/abs/2410.11894)
 
