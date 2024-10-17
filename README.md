@@ -5,7 +5,6 @@
 [Boyuan Chen](http://boyuanchen.com/)
 
 *These authors contributed equally to this work.
-
 <br>
 Duke University
 <br>
