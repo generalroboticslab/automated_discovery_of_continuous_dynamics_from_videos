@@ -56,6 +56,8 @@ source env3.10/bin/activate
 pip install -r requirements.txt
 ```
 
+The installation time is less than 10 minutes.
+
 ## Outputs
 
 We first introduce the naming convention of the saved files so that it is clear what will be saved and where they will be saved.
@@ -142,6 +144,8 @@ Alternatively, a detached screen can be created to run all commands in the backg
 ```
 bash scripts/screen_run.sh {dataset_name} trial {seed} {GPU number}
 ```
+
+The run time for each random seed ranges from 48 hours to 1 week, depending on the dataset. 
 
 ### Summarizing Results from Multiple Seeds
 
