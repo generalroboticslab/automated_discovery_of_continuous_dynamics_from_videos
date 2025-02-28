@@ -362,6 +362,9 @@ class SmoothnessEvaluator(Callback):
         
         data_full_max = np.stack([np.abs(data_min), data_max], axis=0).max(axis=0)
 
+        data_full_max = np.expand_dims(data_full_max, axis=0)
+        data_full_max = np.max(np.concatenate([data_full_max, np.abs(traj)], axis=0), axis=0)
+
         if num_components == 4:
             fig = make_subplots(rows=num_components-1, cols=num_components-1)
         else:
@@ -490,6 +493,14 @@ class SmoothnessEvaluator(Callback):
         finite_difference = []
         for vid_idx in trajectories.keys():
             trajectories[vid_idx] = np.array(trajectories[vid_idx])
+
+            for i in range(1,trajectories[vid_idx].shape[0]):
+                for j in range(trajectories[vid_idx].shape[1]):
+                    if trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] > 1:
+                        trajectories[vid_idx][i:,j] -= 2
+                    elif trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] < -1:
+                        trajectories[vid_idx][i:,j] += 2
+
             finite_difference.extend(trajectories[vid_idx][1:,:]-trajectories[vid_idx][:-1,:])
 
         finite_difference = np.array(finite_difference)
@@ -929,7 +940,7 @@ class RegressEvaluator(Callback):
                     for k in range(j+1, num_components):
                         fig.add_trace(go.Scatter(x=data[:,j], y=data[:,k], mode='markers',
                                     marker=dict(size=4, color=output[:,i], colorbar=dict(title=''),colorscale=colorscale)), row=k, col=j+1)
-                        ig.update_xaxes(row=k, col=j+1, range=[-1.1*data_full_max[j], 1.1*data_full_max[j]], tickmode='linear', tick0 = int(10*data_full_max[j])/10, dtick=int(10*data_full_max[j])/10)
+                        fig.update_xaxes(row=k, col=j+1, range=[-1.1*data_full_max[j], 1.1*data_full_max[j]], tickmode='linear', tick0 = int(10*data_full_max[j])/10, dtick=int(10*data_full_max[j])/10)
                         fig.update_yaxes(row=k, col=j+1, range=[-1.1*data_full_max[k], 1.1*data_full_max[k]], tickmode='linear', tick0 = int(10*data_full_max[k])/10, dtick=int(10*data_full_max[k])/10)
 
                         if j == 0:

@@ -711,15 +711,141 @@ def near_eq(args, num_videos=len(cols), video_len=3, steps=180, delta_percentage
     trajectories = sort_trajectories(trajectories, equilibrium)
     
     plot_near_eq(trajectories, save_path, undamped_model, epsilon, equilibrium, dt)
-    
-def detect_chaos(args):
 
-    if args.dataset != 'double_pendulum':
+def sample_chaos(args, num_videos=100, video_len=15, steps=900, delta_percentage=10, grid_size=10):
+    nsv_model, damped_model, undamped_model = prepare_Model(args, damping=0.0)
+    undamped_ode = NeuralODE(undamped_model, solver='rk4').cuda()
+    nsv_model.cuda()
+
+    save_path = os.path.join(args.output_dir, args.dataset, "downstream", args.model_name, f'sample_chaos_{delta_percentage}')
+    mkdir(save_path) #PATH
+
+    eq_path = os.path.join(args.output_dir, args.dataset, 'tasks', args.model_name, 'mlp_equilibrium', 'eq_points.npy')
+    equilibriums = np.load(eq_path, allow_pickle=True).item()
+    
+    num_eqs = len(equilibriums["roots"])
+
+    equilibrium = None
+    for i in range(num_eqs):
+        if equilibriums['stabilities'][i] == "stable" and equilibriums['successes'][i] == True:
+            equilibrium = equilibriums['roots'][i]
+            break
+
+    if not isinstance(equilibrium, np.ndarray):
+        return
+
+    begin_nsv = torch.FloatTensor(equilibrium).squeeze().cuda()
+    print("Equilibrium: ", begin_nsv)
+
+    data_path = os.path.join(args.output_dir, args.dataset, 'variables', args.model_name, 'data.npy')
+    data = np.load(data_path)
+
+    data_max = np.max(data, axis=0)
+    data_min = np.min(data, axis=0)
+    nsv_range = np.sqrt(np.sum((data.max() - data.min())**2))
+
+    t_span = (video_len / steps * torch.arange(steps)).float().cuda()
+    dt = video_len / steps
+
+    seed_everything(args.seed)
+
+    delta = .01 * delta_percentage * nsv_range
+    #epsilon = .01 * epsilon_percentage * nsv_range
+    print("Delta: ", delta)
+    perturbations = delta / num_videos
+
+    trajectories = []
+    start_values = []
+
+    for i in tqdm(range(num_videos)):
+
+        mkdir(os.path.join(save_path, f'{i}'))
+
+        rand_dir = torch.tensor(make_rand_vector(nsv_model.nsv_dim)).float().cuda()
+        nsv_sample = damped_model.equilibrium + rand_dir * delta
+
+        initial_dist = torch.sqrt(torch.sum(((nsv_sample - begin_nsv)**2)))
+        
+        start_values.append(nsv_sample.cpu().detach().numpy())
+        
+        _, defaultStep_pred = undamped_ode(nsv_sample, t_span)
+
+        trajectory = defaultStep_pred.cpu().detach().numpy()
+        for step in range(steps):
+            if np.any(trajectory[step,:] > data.max()) or np.any(trajectory[step,:] < data.min()):
+                trajectory = trajectory[:step,:]
+                defaultStep_pred = defaultStep_pred[:step,:]
+                #print("Trajectory escaped boundary")
+                break
+        #print(trajectory.shape)
+
+        if trajectory.shape[0] == 0:
+            continue
+        
+        trajectories.append(trajectory)
+
+        if "smooth" in nsv_model.name:
+            defaultStep_pred_output, _, _ = nsv_model.decoder(defaultStep_pred)
+        else:
+            defaultStep_pred_output, _ = nsv_model.decoder(defaultStep_pred)
+
+        for idx in range(defaultStep_pred_output.shape[0]):
+            save_image(defaultStep_pred_output[idx, :, :, :128].cpu(), os.path.join(save_path,  f'{i}/{idx}.png'), nrow=1)
+        
+        generate_video(save_path, f'{i}', os.path.join(save_path, f'{i}.mp4'), fps=60, delete_after=True)
+
+    traj_ratio = {}
+    traj_r2_linear = {}
+    traj_r2_logarithmic = {}
+    
+    count_chaotic = 0
+    count_periodic = 0
+
+    occupancy_path = os.path.join(save_path, 'occupancy')
+    mkdir(occupancy_path)
+    for i, trajectory in enumerate(trajectories):
+
+        visited_cells, ratio_visited_cells = calculate_trajectory_occupancy(trajectory, data.max(), data.min(), grid_size, i, occupancy_path)
+        r2_linear, r2_logarithmic = is_chaotic(ratio_visited_cells)
+        traj_r2_linear[i] = r2_linear
+        traj_r2_logarithmic[i] = r2_logarithmic
+        traj_ratio[i] = r2_linear / r2_logarithmic
+        
+        if traj_ratio[i] > 1.1:
+            count_chaotic += 1
+        else:
+            count_periodic += 1
+    
+    assert(count_chaotic + count_periodic == len(traj_ratio))
+    print(f"Percentage Trajectory Chaotic: {100 * count_chaotic/len(traj_ratio)} %")
+    print(f"Percentage Trajectory Periodic: {100 * count_periodic/len(traj_ratio)} %")
+
+    np.save(os.path.join(occupancy_path, 'traj_ratio.npy'), traj_ratio)
+    np.save(os.path.join(occupancy_path, 'traj_r2_linear.npy'), traj_r2_linear)
+    np.save(os.path.join(occupancy_path, 'traj_r2_logarithmic.npy'), traj_r2_logarithmic)
+
+    np.save(os.path.join(os.path.join(save_path, 'start_values.npy')), np.array(start_values))
+    trajectories_dict = {i: trajectories[i] for i in range(len(trajectories))}
+    np.save(os.path.join(os.path.join(save_path, 'trajectories.npy')), np.array(trajectories_dict), allow_pickle=True)
+
+    full_trajectories = []
+    for i in range(len(trajectories)):
+        if trajectories[i].shape[0] == steps:
+            full_trajectories.append(trajectories[i])
+
+    trajectories = sort_trajectories(full_trajectories[:min(len(cols), len(full_trajectories))], equilibrium)
+    
+    plot_with_gradField(trajectories, save_path, undamped_model, dt, 'trajectories.png', equilibrium)
+
+
+def detect_chaos(args, grid_size=50):
+
+    if 'double_pendulum' not in args.dataset:
         return
 
     if 'smooth' in args.model_name:
         model = SmoothNSVAutoencoder(**args)
-    elif 'refine-64' in args.model_name:
+    elif 'base' in args.model_name:
         model = NSVAutoencoder(**args)
     
     weight_path = get_weightPath(args,  False)
@@ -740,8 +866,12 @@ def detect_chaos(args):
                                                         flag='test',
                                                         seed=args.seed,
                                                         object_name='double_pendulum_long_sequence')
-    
-        test_dataloader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=args.test_batch, shuffle=False, pin_memory=True, num_workers=args.num_workers)
+    elif 'base' in args.model_name:
+        test_dataset = NeuralPhysDataset(data_filepath=args.data_filepath,
+                                                        flag='test',
+                                                        seed=args.seed,
+                                                        object_name='double_pendulum_long_sequence')
+    test_dataloader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=args.test_batch, shuffle=False, pin_memory=True, num_workers=args.num_workers)
 
     net.test_mode = "chaos"
     net.pred_log_name = 'predictions_long'
@@ -769,9 +899,56 @@ def detect_chaos(args):
 
     trajectories = trajectories_from_data_ids(ids_test, nsv_test)
     #print(trajectories_test.keys())
+    
+    save_path_base = os.path.join(args.output_dir, args.dataset, "downstream", model_name, 'chaos')
+    mkdir(save_path_base)
 
-    save_path = os.path.join(args.output_dir, args.dataset, "downstream", model_name, 'chaos')
+    save_path = os.path.join(save_path_base, 'occupancy')
     mkdir(save_path)
+    all_visited_cells = {}
+    traj_ratio = {}
+    traj_r2_linear = {}
+    traj_r2_logarithmic = {}
+    
+    count_chaotic = 0
+    count_periodic = 0
+
+    for i in trajectories.keys():
+
+        visited_cells, ratio_visited_cells = calculate_trajectory_occupancy(trajectories[i], data_max, data_min, grid_size, i, save_path)
+        r2_linear, r2_logarithmic = is_chaotic(ratio_visited_cells)
+        traj_r2_linear[i] = r2_linear
+        traj_r2_logarithmic[i] = r2_logarithmic
+        traj_ratio[i] = r2_linear / r2_logarithmic
+        for cell in visited_cells:
+            all_visited_cells[cell] = traj_ratio[i]
+        
+        if traj_ratio[i] > 1.1:
+            count_chaotic += 1
+        else:
+            count_periodic += 1
+    
+    assert(count_chaotic + count_periodic == len(traj_ratio))
+    print(f"Percentage Trajectory Chaotic: {100 * count_chaotic/len(traj_ratio)} %")
+    print(f"Percentage Trajectory Periodic: {100 * count_periodic/len(traj_ratio)} %")
+
+    np.save(os.path.join(save_path, 'traj_ratio.npy'), traj_ratio)
+    np.save(os.path.join(save_path, 'traj_r2_linear.npy'), traj_r2_linear)
+    np.save(os.path.join(save_path, 'traj_r2_logarithmic.npy'), traj_r2_logarithmic)
+    
+    print(f"Percentage Visited In Total: {100 * len(all_visited_cells)/grid_size**4} %")
+
+    count_chaotic = 0
+    count_periodic = 0
+
+    for key, value in all_visited_cells.items():
+        if value > 1.1:
+            count_chaotic += 1
+        else:
+            count_periodic += 1
+    assert(count_chaotic + count_periodic == len(all_visited_cells))
+    print(f"Percentage Cell Chaotic: {100 * count_chaotic/len(all_visited_cells)} %")
+    print(f"Percentage Cell Periodic: {100 * count_periodic/len(all_visited_cells)} %")
 
     ini_err = {}
     pred_len = 600
@@ -782,10 +959,121 @@ def detect_chaos(args):
                     sel = (i1, i2, t1, t2)
                     ini_err[sel] = np.linalg.norm(trajectories[i1][t1] - trajectories[i2][t2])
     sorted_ini_err = list(sorted(ini_err.items(), key=lambda x:x[1], reverse=False))
+    
+    save_path = os.path.join(save_path_base, 'comparisons')
+    mkdir(save_path)
+
     for k in range(50):
         i1, i2, t1, t2 = sorted_ini_err[k][0]
         save_name = f'ini {sorted_ini_err[k][1]} {i1}_{t1} vs {i2}_{t2}'
         visualize_trajectory_chaos(trajectories[i1][t1:t1+pred_len], trajectories[i2][t2:t2+pred_len], save_path, save_name, data_max, data_min)
+
+        plot_occupancy(trajectories[i1][t1:t1+pred_len], trajectories[i2][t2:t2+pred_len], save_path, save_name, data_max, data_min, grid_size)
+
+from scipy.optimize import curve_fit
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+
+def is_chaotic(ratio_visited_cells):
+
+    steps = ratio_visited_cells.shape[0]
+
+    y = ratio_visited_cells.reshape(-1,1)
+
+    dt = 1/60 
+    x = np.linspace(dt,dt*(steps), steps)
+    x_reshaped = x.reshape(-1, 1)
+    x_log_transformed = np.log(x).reshape(-1, 1)
+
+    linear_model = LinearRegression()
+    linear_model.fit(x_reshaped, y)
+    y_pred_linear = linear_model.predict(x_reshaped)
+
+    logarithmic_model = LinearRegression()
+    logarithmic_model.fit(x_log_transformed, y)
+    y_pred_logarithmic = logarithmic_model.predict(x_log_transformed)
+
+    r2_linear = r2_score(y, y_pred_linear)
+    r2_logarithmic = r2_score(y, y_pred_logarithmic)
+
+    return r2_linear, r2_logarithmic 
+    
+def calculate_trajectory_occupancy(traj, data_max, data_min, N, traj_num=None, save_path=None):
+
+    data_range = data_max - data_min
+    def get_cell_index(state):
+        """Convert state in [-1, 1] domain to grid index."""
+        return np.floor((state - data_min) * (N-1) / data_range).astype(int)
+    
+    visited_cells = set([tuple(get_cell_index(traj[0,:]))])
+    num_visited_cells = [len(visited_cells)]
+
+    steps = traj.shape[0]
+    for i in range(steps-1):
+
+        start_state = traj[i,:] 
+        end_state = traj[i+1,:]
+
+        start_cell = get_cell_index(start_state)
+        end_cell = get_cell_index(end_state)
+
+        d = end_cell-start_cell
+        max_d = np.max(np.abs(d))
+        s = d/max_d if max_d != 0 else 0
+
+        cur_cell = np.copy(start_cell)
+        for j in range(max_d):
+            visited_cells.add(tuple(np.floor(cur_cell).astype(int)))
+            cur_cell = cur_cell + s
+        visited_cells.add(tuple(end_cell))
+
+        num_visited_cells.append(len(visited_cells))
+    
+    ratio_visited_cells =  100 * np.array(num_visited_cells) / N**4
+
+    if traj_num != None and save_path != None:
+        dt = 1/60 
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=np.linspace(dt,dt*(steps), steps), y=ratio_visited_cells, mode='lines', line=dict(color=cols[0], width=5),showlegend=False))
+        fig.update_yaxes(title=f"<b>Domain Visited %</b>", tickmode='auto')
+        fig.update_xaxes(range=[dt,dt*(steps)], nticks=6)
+        fig.update_xaxes(title="<b>Time (s)</b>")
+        update_figure(fig, True)
+        fig.write_image(os.path.join(save_path, f"{traj_num}.png"), scale=4)
+
+
+    return visited_cells, ratio_visited_cells
+    
+
+
+def plot_occupancy(traj1, traj2, save_path, save_name, data_max, data_min, N):
+
+    data_range = data_max - data_min
+    def get_cell_index(state):
+        """Convert state in [-1, 1] domain to grid index."""
+        return np.floor((state - data_min) * (N-1) / data_range).astype(int)
+    
+    visited_cells_1, ratio_visited_cells_1 = calculate_trajectory_occupancy(traj1, data_max, data_min, N)
+    visited_cells_2, ratio_visited_cells_2 = calculate_trajectory_occupancy(traj2, data_max, data_min, N)
+
+    #print(ratio_visited_cells_1)
+    #print(ratio_visited_cells_2)
+
+    steps = ratio_visited_cells_1.shape[0]
+    dt = 1/60 
+    fig = make_subplots(rows=2, cols=1)
+    fig.add_trace(go.Scatter(x=np.linspace(dt,dt*(steps), steps), y=ratio_visited_cells_1, mode='lines', line=dict(color=cols[0], width=5),showlegend=False), row=1, col=1)
+    fig.add_trace(go.Scatter(x=np.linspace(dt,dt*(steps), steps), y=ratio_visited_cells_2, mode='lines', line=dict(color=cols[1], width=5),showlegend=False), row=2, col=1)
+    fig.update_yaxes(row=1, col=1, title=f"<b>Domain Visited %</b>", tickmode='auto')
+    fig.update_yaxes(row=2, col=1, title=f"<b>Domain Visited %</b>", tickmode='auto')
+    fig.update_xaxes(row=1, col=1, range=[dt,dt*(steps)], nticks=6)
+    fig.update_xaxes(row=2, col=1, range=[dt,dt*(steps)], nticks=6)
+    fig.update_xaxes(row=2, col=1, title="<b>Time (s)</b>")
+    update_figure_small(fig, True)
+    fig.write_image(os.path.join(save_path, f"{save_name}_occupancy.png"), scale=4)
+
+    return #{key: np.max(ratio_visited_cells_1) > 2 for key in visited_cells_1}, {key: np.max(ratio_visited_cells_2) > 2 for key in visited_cells_2}
+
 
 def visualize_trajectory_chaos(traj1, traj2, save_path, save_name, data_max, data_min):
 
@@ -861,7 +1149,9 @@ def main():
     if script_args.task ==  "dt":
         return time_variation(args, mode=script_args.mode, delta=script_args.delta)
     if script_args.task == "chaos":
-        return detect_chaos(args)
+        return detect_chaos(args, grid_size=10)
+    if script_args.task == "sample_chaos":
+        return sample_chaos(args, delta_percentage=35, grid_size=10)
     if script_args.task == "near_eq":
         return near_eq(args,video_len=2, steps=120, delta_percentage=3, epsilon_percentage=15)
     if script_args.task == "all":

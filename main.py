@@ -47,10 +47,11 @@ def prepare_Trainer(args):
         post_process = SmoothnessEvaluator()
         callbacks.append(post_process)
 
-    logger = pl_loggers.TensorBoardLogger(save_dir=output_path, 
-                                        name='logs', 
-                                        version=model_name, 
-                                        log_graph=True)
+    logger = pl_loggers.WandbLogger(save_dir=output_path, 
+                                        name=model_name, 
+                                        log_model=False,
+                                        project=args.dataset,
+                                        resume="allow")
 
     trainer = Trainer(devices=args.num_gpus,
                       max_epochs=args.epochs,

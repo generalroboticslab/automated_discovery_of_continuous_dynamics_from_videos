@@ -69,8 +69,19 @@ def computeJacobian(outputs, x):
     
     return jacobian
 
-def variable_distance(v_1, v_2):
-    return torch.linalg.norm(v_1 - v_2, dim=1, ord=2)
+def variable_distance(v_1, v_2, cyclic=True):
+
+    if cyclic:
+
+        direct_diff = torch.abs(v_1 - v_2)
+
+        loops = torch.where(direct_diff > 1, 2.0, 0.0)
+
+        direct_diff = torch.abs(direct_diff - loops)
+
+        return torch.linalg.norm(direct_diff, dim=1, ord=2)
+    else:
+        return torch.linalg.norm(v_1 - v_2, dim=1, ord=2)
 
 def choose_nonlinearity(name):
     nl = None
