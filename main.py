@@ -18,7 +18,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 
-def prepare_Trainer(args):
+def prepare_Trainer(args, is_test):
 
     output_path = os.path.join(os.getcwd(), args.output_dir, args.dataset)
     model_name = create_name(args)
@@ -50,7 +50,7 @@ def prepare_Trainer(args):
     logger = pl_loggers.WandbLogger(save_dir=output_path, 
                                         name=model_name, 
                                         log_model=False,
-                                        project=args.dataset,
+                                        project=args.dataset if not is_test else args.dataset + '_test',
                                         resume="allow")
 
     trainer = Trainer(devices=args.num_gpus,
@@ -104,7 +104,7 @@ def prepare_components(args, is_test):
 
     seed_everything(args.seed)
     
-    trainer = prepare_Trainer(args)
+    trainer = prepare_Trainer(args, is_test)
     dm = prepare_DataModule(args)
     net = prepare_Model(args, is_test)
 

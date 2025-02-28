@@ -488,18 +488,19 @@ class SmoothnessEvaluator(Callback):
         fig.write_image(os.path.join(save_path, v_name+'.png'), scale=4)
 
 
-    def find_filtered_trajectories(self, trajectories, percentile=99):
+    def find_filtered_trajectories(self, trajectories, cyclic, percentile=99):
 
         finite_difference = []
         for vid_idx in trajectories.keys():
             trajectories[vid_idx] = np.array(trajectories[vid_idx])
 
-            for i in range(1,trajectories[vid_idx].shape[0]):
-                for j in range(trajectories[vid_idx].shape[1]):
-                    if trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] > 1:
-                        trajectories[vid_idx][i:,j] -= 2
-                    elif trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] < -1:
-                        trajectories[vid_idx][i:,j] += 2
+            if cyclic:
+                for i in range(1,trajectories[vid_idx].shape[0]):
+                    for j in range(trajectories[vid_idx].shape[1]):
+                        if trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] > 1:
+                            trajectories[vid_idx][i:,j] -= 2
+                        elif trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] < -1:
+                            trajectories[vid_idx][i:,j] += 2
 
             finite_difference.extend(trajectories[vid_idx][1:,:]-trajectories[vid_idx][:-1,:])
 
@@ -566,7 +567,7 @@ class SmoothnessEvaluator(Callback):
         nsv_test = np.array(pl_module.all_refine_latents)
         
         trajectories_test = self.trajectories_from_data_ids(ids_test, nsv_test)
-        invalid_trajectories = self.find_filtered_trajectories(trajectories_test)
+        invalid_trajectories = self.find_filtered_trajectories(trajectories_test, 'cyclic' in pl_module.smooth_loss_type)
 
         data_max = np.max(nsv_test, axis=0)
         data_min = np.min(nsv_test, axis=0)
@@ -594,6 +595,9 @@ class RegressEvaluator(Callback):
         steps = pred_traj.shape[0]
 
         data_full_max = np.stack([np.abs(data_min), data_max], axis=0).max(axis=0)
+        data_full_max = np.expand_dims(data_full_max, axis=0)
+        data_full_max = np.max(np.concatenate([data_full_max, np.abs(target_traj), np.abs(pred_traj)], axis=0), axis=0)
+
         data_max_full = data_full_max.max()
 
         fig = go.Figure()
@@ -646,7 +650,7 @@ class RegressEvaluator(Callback):
     
         fig.write_image(os.path.join(save_path, 'trajectories/'+str(traj_id)+'.png'), scale=4)
 
-    def eval_pred(self, data, pred, target, ids, pl_module, extra_steps=0):
+    def eval_pred(self, data, pred, target, ids, pl_module):
 
         num_components = pl_module.nsv_model.nsv_dim
         save_path = os.path.join(self.task_log_dir, 'mlp_predictions')
@@ -654,7 +658,7 @@ class RegressEvaluator(Callback):
 
         full_seq_ids = []
         for i in range(len(ids)):
-            if ids[i][1] == extra_steps:
+            if ids[i][1] == 0:
                 full_seq_ids.append(i)
         
         data_max = np.max(data, axis=0)
@@ -852,6 +856,12 @@ class RegressEvaluator(Callback):
 
     def visualize(self, save_path, pred, target, id, nsv_model):
 
+        pred = torch.from_numpy(pred).cuda()
+        target = torch.from_numpy(target).cuda()
+
+        if 'cyclic' in nsv_model.name:
+            pred = torch.fmod((pred + torch.sign(pred) * torch.where(torch.abs(pred) > 1, 1.0, 0.0)), 2.0) - torch.sign(pred) * torch.where(torch.abs(pred) > 1, 1.0, 0.0)
+            target = torch.fmod((target + torch.sign(target) * torch.where(torch.abs(target) > 1, 1.0, 0.0)), 2.0) - torch.sign(target) * torch.where(torch.abs(target) > 1, 1.0, 0.0)
 
         def get_data(filepath):
             data = Image.open(filepath)
@@ -863,12 +873,12 @@ class RegressEvaluator(Callback):
 
         if 'smooth' in nsv_model.name:
             nsv_model.eval()
-            output, _ = nsv_model.decoder.nsv_decoder(torch.tensor(target).float().cuda())
+            output, _ = nsv_model.decoder.nsv_decoder(target)
             nsv_model.eval()
-            pred_output, _ = nsv_model.decoder.nsv_decoder(torch.tensor(pred).float().cuda())
+            pred_output, _ = nsv_model.decoder.nsv_decoder(pred)
         else:
-            output, _ = nsv_model.decoder(torch.from_numpy(target).cuda())
-            pred_output, _ = nsv_model.decoder(torch.from_numpy(pred).cuda())
+            output, _ = nsv_model.decoder(target)
+            pred_output, _ = nsv_model.decoder(pred)
 
         mkpath(os.path.join(save_path, 'full', str(id)))
         mkpath(os.path.join(save_path, 'gt', str(id)))
@@ -1403,5 +1413,5 @@ class RegressEvaluator(Callback):
         if pl_module.test_mode == "eq_stability":
             return
         
-        self.eval_pred(data, pred, target, ids, pl_module, extra_steps=pl_module.extra_steps)
+        self.eval_pred(data, pred, target, ids, pl_module)
         self.visualize_mlp(data, pl_module, output, target)

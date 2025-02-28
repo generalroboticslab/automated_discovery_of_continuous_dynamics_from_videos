@@ -121,6 +121,8 @@ class RegressDataset(Dataset):
         self.pred_length = pred_length
         self.filter_data = filter_data
         self.percentile = percentile
+
+        self.cyclic = 'cyclic' in self.nsv_model_name
         
         self.get_states()
 
@@ -136,12 +138,13 @@ class RegressDataset(Dataset):
         for vid_idx in trajectories.keys():
             trajectories[vid_idx] = np.array(trajectories[vid_idx])
 
-            for i in range(1,trajectories[vid_idx].shape[0]):
-                for j in range(trajectories[vid_idx].shape[1]):
-                    if trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] > 1:
-                        trajectories[vid_idx][i:,j] -= 2
-                    elif trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] < -1:
-                        trajectories[vid_idx][i:,j] += 2
+            if self.cyclic:
+                for i in range(1,trajectories[vid_idx].shape[0]):
+                    for j in range(trajectories[vid_idx].shape[1]):
+                        if trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] > 1:
+                            trajectories[vid_idx][i:,j] -= 2
+                        elif trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] < -1:
+                            trajectories[vid_idx][i:,j] += 2
                 
             finite_difference.extend(trajectories[vid_idx][1:,:]-trajectories[vid_idx][:-1,:])
 
@@ -225,13 +228,14 @@ class RegressDataset(Dataset):
 
         cur_step = data_nsv
 
-        for i in range(target_nsv.shape[0]):
-            for j in range(target_nsv.shape[1]):
-                if target_nsv[i,j] - cur_step[j] > 1:
-                    target_nsv[i:,j] -= 2
-                elif target_nsv[i,j] - cur_step[j] < -1:
-                    target_nsv[i:,j] += 2
-            cur_step = target_nsv[i]
+        if self.cyclic:
+            for i in range(target_nsv.shape[0]):
+                for j in range(target_nsv.shape[1]):
+                    if target_nsv[i,j] - cur_step[j] > 1:
+                        target_nsv[i:,j] -= 2
+                    elif target_nsv[i,j] - cur_step[j] < -1:
+                        target_nsv[i:,j] += 2
+                cur_step = target_nsv[i]
 
 
         target_nsv = torch.cat((target_nsv, torch.zeros(p_frame, seq.shape[1])), 0)

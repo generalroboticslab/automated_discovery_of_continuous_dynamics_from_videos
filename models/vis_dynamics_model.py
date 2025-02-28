@@ -100,13 +100,25 @@ class VisDynamicsModel(pl.LightningModule):
             smooth_loss = torch.as_tensor(0.0, device=self.device)
             if self.smooth_loss_type == 'neighbor-distance':
 
-                data_target_dist = variable_distance(state, target_state)
+                data_target_dist = variable_distance(state, target_state, False)
                 smooth_loss = F.relu(data_target_dist - self.margin).mean()
             
             if self.smooth_loss_type == 'neighbor-distance-2':
 
-                data_target_dist = variable_distance(state, target_state)
-                data_between_dist = variable_distance(state, in_between_state)
+                data_target_dist = variable_distance(state, target_state, False)
+                data_between_dist = variable_distance(state, in_between_state, False)
+
+                smooth_loss = F.relu(data_target_dist - self.margin).mean() +  F.relu(data_between_dist - self.margin/2).mean()
+            
+            if self.smooth_loss_type == 'cyclic-neighbor-distance':
+
+                data_target_dist = variable_distance(state, target_state, True)
+                smooth_loss = F.relu(data_target_dist - self.margin).mean()
+            
+            if self.smooth_loss_type == 'cyclic-neighbor-distance-2':
+
+                data_target_dist = variable_distance(state, target_state, True)
+                data_between_dist = variable_distance(state, in_between_state, True)
 
                 smooth_loss = F.relu(data_target_dist - self.margin).mean() +  F.relu(data_between_dist - self.margin/2).mean()
             
