@@ -6,12 +6,15 @@ sweep_id=$3
 sweep_count=$4
 
 CUDA_VISIBLE_DEVICES=0 python main.py -mode sweep -config configs/"$dataset"/sweep.yaml -sweep_name "$sweep_name"  -sweep_id "$sweep_id" -sweep_count "$sweep_count" &
+sleep 30s
 CUDA_VISIBLE_DEVICES=0 python main.py -mode sweep -config configs/"$dataset"/sweep.yaml -sweep_name "$sweep_name"  -sweep_id "$sweep_id"  -sweep_count "$sweep_count"&
-
+sleep 30s
 for i in 1 2 3 4 5 6 7
 do
   CUDA_VISIBLE_DEVICES=$i python main.py -mode sweep -config configs/"$dataset"/sweep.yaml -sweep_name "$sweep_name"  -sweep_id "$sweep_id"  -sweep_count "$sweep_count" &
+  sleep 30s
   CUDA_VISIBLE_DEVICES=$i python main.py -mode sweep -config configs/"$dataset"/sweep.yaml -sweep_name "$sweep_name"  -sweep_id "$sweep_id"  -sweep_count "$sweep_count" &
+  sleep 30s
   #CUDA_VISIBLE_DEVICES=$i wandb agent "$sweep_id"&
 done
 
