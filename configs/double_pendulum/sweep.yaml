@@ -1,4 +1,3 @@
-seed: 1
 nsv_model_name: "default"
 model_name: 'smooth'
 latent_model_name: 'encoder-decoder-64'

@@ -18,7 +18,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks import ModelCheckpoint
 
-
+ENTITY="dc3042"
 
 def prepare_Trainer(args, is_test):
 
@@ -211,6 +211,7 @@ def sweep_run(args, sweep_name, project):
     with wandb.init(group=sweep_name, reinit=True, project=project) as run:
         print(wandb.config)
 
+        args.seed = wandb.config['seed']
         args.smooth_loss_weight = wandb.config['smooth_loss_weight']
         args.regularize_loss_weight = wandb.config['regularize_loss_weight']
         
@@ -219,9 +220,6 @@ def sweep_run(args, sweep_name, project):
 
 # Sweep Worker
 def sweep(args, count=4, sweep_id=None, sweep_name=None):
-
-    if sweep_id == None:
-        sweep_id, sweep_name = create_sweep(args)
 
     wandb.agent(sweep_id, function=functools.partial(sweep_run, args, sweep_name, args.dataset), count=count)
 
