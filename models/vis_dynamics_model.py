@@ -86,15 +86,15 @@ class VisDynamicsModel(pl.LightningModule):
             state_max = torch.max(state_clone, dim=0)[0][0]
             state_min = torch.min(state_clone, dim=0)[0][0]
 
-            self.log('state_max{}'.format('_test' if is_test else '_val' if is_val else '_train'), state_max, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
-            self.log('state_min{}'.format('_test' if is_test else '_val' if is_val else '_train'), state_min, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+            #self.log('state_max{}'.format('_test' if is_test else '_val' if is_val else '_train'), state_max, on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+            #self.log('state_min{}'.format('_test' if is_test else '_val' if is_val else '_train'), state_min, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
             
 
             if self.reconstruct_loss_type == 'high-dim-latent':
                 
                 reconstruct_loss = self.loss_func(latent, latent_gt).sum([1]).mean() 
 
-            self.log('rec{}_loss'.format('_test' if is_test else '_val' if is_val else '_train'), reconstruct_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+            self.log('rec{}_loss'.format('_test' if is_test else '_val' if is_val else '_train'), reconstruct_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
 
             # smoothness loss
             smooth_loss = torch.as_tensor(0.0, device=self.device)
@@ -122,7 +122,7 @@ class VisDynamicsModel(pl.LightningModule):
 
                 smooth_loss = F.relu(data_target_dist - self.margin).mean() +  F.relu(data_between_dist - self.margin/2).mean()
             
-            self.log('smth{}_loss'.format('_test' if is_test else '_val' if is_val else '_train'), smooth_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+            self.log('smth{}_loss'.format('_test' if is_test else '_val' if is_val else '_train'), smooth_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
             
             # regularization loss
             regularize_loss = torch.as_tensor(0.0)
@@ -139,7 +139,7 @@ class VisDynamicsModel(pl.LightningModule):
                 v_col = torch.stack([radius * torch.cos(theta), radius * torch.sin(theta)], 1)
                 regularize_loss = self.regularize_loss_func(state, v_col)
 
-            self.log('reg{}_loss'.format('_test' if is_test else '_val' if is_val else '_train'), regularize_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+            self.log('reg{}_loss'.format('_test' if is_test else '_val' if is_val else '_train'), regularize_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
             
             
             total_loss = self.reconstruct_loss_weight * reconstruct_loss + self.beta * (self.smooth_loss_weight * smooth_loss  \
