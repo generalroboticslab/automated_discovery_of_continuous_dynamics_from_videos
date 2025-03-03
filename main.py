@@ -144,7 +144,8 @@ def test(args, test_mode="default"):
     mkdir(save_path)
     np.save(os.path.join(save_path, 'results.npy'), result)
 
-    pred(net, args)
+    if test_mode != 'sweep':
+        pred(net, args)
 
 # collect variables from training data
 def test_on_train_data(args, test_mode="default"):
@@ -181,7 +182,33 @@ def run_pred(args):
 # Create Sweep
 def create_sweep(args,):
     
-    sweep_name = args.dataset + "_sweep"
+    sweep_name = args.dataset + "_sweep_2"
+
+    sweep_configuration = {
+            'name': sweep_name,
+            'method': 'grid',
+            'metric': {
+                'goal': 'minimize',
+                'name': 'val_loss'
+            }
+        }
+
+    sweep_configuration['parameters'] = {}
+    sweep_configuration['parameters']['seed'] = {}
+    sweep_configuration['parameters']['seed']['values'] = [1,2,3]
+    sweep_configuration['parameters']['smooth_loss_weight'] = {}
+    sweep_configuration['parameters']['smooth_loss_weight']['values'] = args.sweep_smooth_loss_weights #[64.0, 32.0, 16.0, 8.0] 
+    sweep_configuration['parameters']['regularize_loss_weight'] = {}
+    sweep_configuration['parameters']['regularize_loss_weight']['values'] = args.sweep_regularize_loss_weights #[32.0, 16.0, 8.0, 4.0] 
+
+    sweep_id = wandb.sweep(sweep=sweep_configuration, project=args.dataset)
+
+    return sweep_id, sweep_name
+
+# Create Sweep Test
+def create_sweep_test(args,):
+    
+    sweep_name = args.dataset + "_sweep_test_2"
 
     sweep_configuration = {
             'name': sweep_name,
@@ -218,10 +245,31 @@ def sweep_run(args, sweep_name, project):
         run.name = create_name(args)
         train(args)
 
+# Sweep Function
+def sweep_test_run(args, sweep_name, project):
+
+    wandb.run = None
+    with wandb.init(group=sweep_name, reinit=True, project=project) as run:
+        print(wandb.config)
+
+        args.seed = wandb.config['seed']
+        args.smooth_loss_weight = wandb.config['smooth_loss_weight']
+        args.regularize_loss_weight = wandb.config['regularize_loss_weight']
+        
+        run.name = create_name(args)
+        test(args, 'sweep')
+
 # Sweep Worker
 def sweep(args, count=4, sweep_id=None, sweep_name=None):
 
     wandb.agent(sweep_id, function=functools.partial(sweep_run, args, sweep_name, args.dataset), count=count)
+
+    return 
+
+# Sweep Test Worker
+def sweep_test(args, count=4, sweep_id=None, sweep_name=None):
+
+    wandb.agent(sweep_id, function=functools.partial(sweep_test_run, args, sweep_name, args.dataset), count=count)
 
     return 
 
@@ -232,6 +280,16 @@ def run_sweep(args):
 
     print("Running sweep")
     os.system(f"bash scripts/run_sweep.sh {args.dataset} {sweep_name} {sweep_id} {4}")
+    print("Finished")
+    wandb.teardown()
+
+# Run Sweep Test
+def run_sweep_test(args):
+
+    sweep_id, sweep_name = create_sweep_test(args)
+
+    print("Running sweep")
+    os.system(f"bash scripts/run_sweep_test.sh {args.dataset} {sweep_name} {sweep_id} {4}")
     print("Finished")
     wandb.teardown()
 
@@ -265,8 +323,12 @@ def main():
         return train(args)
     elif script_args.mode == "run_sweep":
         return run_sweep(args)
+    elif script_args.mode == "run_sweep_test":
+        return run_sweep_test(args)
     elif script_args.mode == "sweep":
         return sweep(args, script_args.sweep_count, script_args.sweep_id, script_args.sweep_name)
+    elif script_args.mode == "sweep_test":
+        return sweep_test(args, script_args.sweep_count, script_args.sweep_id, script_args.sweep_name)
     elif script_args.mode == "pred":
         return run_pred(args)
     elif script_args.mode == "test":

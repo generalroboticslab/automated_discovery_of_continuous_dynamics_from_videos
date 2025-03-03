@@ -17,6 +17,7 @@ import sympy as sp
 from inspect import signature
 
 import pytorch_lightning as pl
+import wandb
 
 from torchvision import transforms
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
@@ -226,6 +227,7 @@ class SmoothnessEvaluator(Callback):
 
         np.save(os.path.join(task_log_dir, "invalid.npy"), np.array(invalid_trajectories))
 
+        visualizations = []
         print('Evaluating Smoothness')
         for p, traj in tqdm(trajectories.items()):
             traj_arr = np.array(traj)
@@ -233,8 +235,10 @@ class SmoothnessEvaluator(Callback):
             variation_mean[p], variation_ord2_mean[p] = self.calculate_variation_mean(traj_arr, dt)
             deviation[p] = self.calculate_deviation(traj_arr, dt)
             variation_max[p], variation_ord2_max[p] = self.calculate_variation_max(traj_arr, dt)
-            self.visualize_trajectory(traj_arr, task_log_dir, p, dt, data_min, data_max)
-        
+            plots = self.visualize_trajectory(traj_arr, task_log_dir, p, dt, data_min, data_max)
+            visualization = [p] + plots
+            visualizations.append(visualization)
+
         variation_mean_arr = np.array(list(variation_mean.values()))
         variation_ord2_mean_arr = np.array(list(variation_ord2_mean.values()))
         np.save(os.path.join(spline_fit_save_path, 'pre_filter_variation_mean.npy'), variation_mean_arr)
@@ -271,6 +275,11 @@ class SmoothnessEvaluator(Callback):
 
         print('pre filter tangling mean:', '%.2f' % (np.mean(pre_filter_tangling_arr)))
         print('pre filter tangling max:', '%.2f' % (np.max(pre_filter_tangling_max_arr)))
+
+        metrics = np.stack([np.array(list(trajectories.keys())), variation_mean_arr, variation_ord2_mean_arr, variation_max_arr, variation_ord2_max_arr, pre_filter_deviation_arr, np.array([t in invalid_trajectories for t in trajectories.keys()])], axis=1)
+
+        return visualizations, metrics
+
 
     def get_smooth_trajectory(self, traj, dt, window):
 
@@ -365,6 +374,9 @@ class SmoothnessEvaluator(Callback):
         data_full_max = np.expand_dims(data_full_max, axis=0)
         data_full_max = np.max(np.concatenate([data_full_max, np.abs(traj)], axis=0), axis=0)
 
+        if data_full_max.max() > 1.0:
+            self.looped_traj.append(vid_idx)
+
         if num_components == 4:
             fig = make_subplots(rows=num_components-1, cols=num_components-1)
         else:
@@ -417,6 +429,7 @@ class SmoothnessEvaluator(Callback):
         data_max_full = data_full_max.max()
 
         fig.write_image(os.path.join(save_path, f'nsv_trajectories/{vid_idx}.png'), scale=4)
+        traj_img = Image.open(os.path.join(save_path, f'nsv_trajectories/{vid_idx}.png'))
 
         fig = go.Figure()
         for i in range(num_components):
@@ -425,6 +438,7 @@ class SmoothnessEvaluator(Callback):
                             yaxis=dict(title='<b>V</b>', range=[-1.1*data_max_full, 1.1*data_max_full], tickmode='linear', tick0 = int(10*data_max_full)/10, dtick=int(10*data_max_full)/10))
         update_figure(fig, True)
         fig.write_image(os.path.join(save_path, 'time_series/'+str(vid_idx)+'.png'), scale=4)
+        time_series_img = Image.open(os.path.join(save_path, 'time_series/'+str(vid_idx)+'.png'))
 
         t = np.arange(traj.shape[0]) * dt
         cs = CubicSpline(t, traj)
@@ -437,7 +451,12 @@ class SmoothnessEvaluator(Callback):
                             yaxis=dict(title='<b>dV/dt</b>', nticks=5))
         update_figure(fig, True)
         fig.write_image(os.path.join(save_path, 'first_order_derivatives/'+str(vid_idx)+'.png'), scale=4)
+        derivative_img = Image.open(os.path.join(save_path, 'first_order_derivatives/'+str(vid_idx)+'.png'))
 
+        
+        visualization = [wandb.Image(traj_img, caption=f'Trajectory {vid_idx}'), wandb.Image(time_series_img, caption=f'Time Series {vid_idx}'), wandb.Image(derivative_img, caption=f'Derivative {vid_idx}')]
+
+        return visualization
 
     def visualize_nsv_embedding(self, phys_all, ids_test, nsv_test, task_log_dir, data_max, data_min):
         embedding_save_path = os.path.join(task_log_dir, 'nsv_embedding')
@@ -448,9 +467,14 @@ class SmoothnessEvaluator(Callback):
         nsv_test_arr = np.array(nsv_test)
         num_components = nsv_test_arr.shape[1]
 
+        plots = []
         print('Visualizing NSV Embeddings')
         for p_var in tqdm(phys_vars_list):
-            self.visualize_nsv(nsv_test_arr, phys_test[p_var], p_var, embedding_save_path, data_max, data_min)
+            plot = self.visualize_nsv(nsv_test_arr, phys_test[p_var], p_var, embedding_save_path, data_max, data_min)
+
+            plots.append((p_var, plot))
+        
+        return plots
 
 
     def visualize_nsv(self, data, v, v_name, save_path, data_max, data_min):
@@ -487,6 +511,8 @@ class SmoothnessEvaluator(Callback):
             update_figure(fig, True)
         fig.write_image(os.path.join(save_path, v_name+'.png'), scale=4)
 
+        img = Image.open(os.path.join(save_path, v_name+'.png'))
+        return img
 
     def find_filtered_trajectories(self, trajectories, cyclic, percentile=99):
 
@@ -572,15 +598,44 @@ class SmoothnessEvaluator(Callback):
         data_max = np.max(nsv_test, axis=0)
         data_min = np.min(nsv_test, axis=0)
     
-        self.eval_smooth(trajectories_test, task_log_dir, invalid_trajectories, pl_module.dt, data_min, data_max)
+        self.looped_traj = []
+        visualizations, metrics = self.eval_smooth(trajectories_test, task_log_dir, invalid_trajectories, pl_module.dt, data_min, data_max)
+
+        table = wandb.Table(data=visualizations, columns=["Video IDX","Trajectories", "Time Series", "Derivatives"])
+        trainer.logger.experiment.log({"Trajectory Visualizations":table, "trainer/global_step": trainer.global_step})
+        table = wandb.Table(data=metrics, columns=["Video IDX", "Mean Variation", "Mean 2nd Order Variation", "Max Variation", "Max 2nd Order Variation", "Deviation", "Filtered"])
+        trainer.logger.experiment.log({"Smoothness Metrics":table, "trainer/global_step": trainer.global_step})
+
+        trainer.logger.experiment.log({'Mean Variation':metrics[:,1].mean()})
+        trainer.logger.experiment.log({'Mean 2nd Order Variation':metrics[:,2].mean()})
+        trainer.logger.experiment.log({'Max Variation':metrics[:,3].max()})
+        trainer.logger.experiment.log({'Max 2nd Order Variation':metrics[:,4].max()})
+        trainer.logger.experiment.log({'Mean Deviation':metrics[:,5].mean()})
+        trainer.logger.experiment.log({'Filtered Ratio': metrics[:,6].sum()/len(list(trajectories_test.keys()))})
+
+        print("Number of Looped Traj: ", len(self.looped_traj))
+
+        filtered_looped_traj = []
+        for t in self.looped_traj:
+            if t not in invalid_trajectories:
+                filtered_looped_traj.append(t)
+        print("Number of Looped Traj (Filtered): ", len(filtered_looped_traj))
+
+        trainer.logger.experiment.log({'Looped Trajectories': len(self.looped_traj)})
+        trainer.logger.experiment.log({'Looped Trajectories (Post Filter)': len(filtered_looped_traj)})
 
         data_file_path = os.path.join('./data', pl_module.model.dataset)
         physics_variable_path = os.path.join(data_file_path, 'phys_vars.npy')
     
         phys_all = np.load(physics_variable_path, allow_pickle=True).item()
 
-        self.visualize_nsv_embedding(phys_all, ids_test, nsv_test, task_log_dir, data_max, data_min)
+        plots = self.visualize_nsv_embedding(phys_all, ids_test, nsv_test, task_log_dir, data_max, data_min)
 
+        images = []
+        for cap, img in plots[3::4]:
+            images.append(wandb.Image(img, caption=cap))
+        
+        trainer.logger.experiment.log({"Embeddings":images, "trainer/global_step": trainer.global_step})
 
 
 class RegressEvaluator(Callback):
