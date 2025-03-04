@@ -11,6 +11,7 @@ import scipy.io as sio
 from torch.utils.data import TensorDataset, Dataset, DataLoader, random_split
 from torchvision import datasets, transforms
 
+import copy
 import pytorch_lightning as pl
 from scipy.interpolate import CubicSpline
 from tqdm import tqdm
@@ -139,6 +140,7 @@ class RegressDataset(Dataset):
             trajectories[vid_idx] = np.array(trajectories[vid_idx])
 
             if self.cyclic:
+                print("cyclic")
                 for i in range(1,trajectories[vid_idx].shape[0]):
                     for j in range(trajectories[vid_idx].shape[1]):
                         if trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] > 1:
