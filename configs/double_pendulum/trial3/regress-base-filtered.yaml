@@ -5,7 +5,7 @@ model_name: 'regressDeeper'
 reconstruct_loss_weight: 1.0
 pred_length: 56
 
-lr: 0.004265
+lr: 0.0003 #0.004265
 if_cuda: True
 gamma: 0.5
 log_dir: 'outputs/logs'

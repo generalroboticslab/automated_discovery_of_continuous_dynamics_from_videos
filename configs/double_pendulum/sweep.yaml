@@ -14,7 +14,7 @@ input_type: 'high-dim-latent'
 reconstruct_loss_type: 'high-dim-latent'
 reconstruct_loss_weight: 1.0
 margin: 0.1
-smooth_loss_type:  'cyclic-neighbor-distance'
+smooth_loss_type:  'cyclic-neighbor-distance-2'
 sweep_smooth_loss_weights: [1024.0, 512.0, 256.0, 128.0, 64.0, 32.0]
 regularize_loss_type: 'sinkhorn'
 sweep_regularize_loss_weights: [32.0, 16.0, 8.0]
