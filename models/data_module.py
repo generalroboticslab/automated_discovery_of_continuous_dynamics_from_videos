@@ -140,7 +140,7 @@ class RegressDataset(Dataset):
             trajectories[vid_idx] = np.array(trajectories[vid_idx])
 
             if self.cyclic:
-                print("cyclic")
+                #print("cyclic")
                 for i in range(1,trajectories[vid_idx].shape[0]):
                     for j in range(trajectories[vid_idx].shape[1]):
                         if trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] > 1:

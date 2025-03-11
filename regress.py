@@ -166,7 +166,7 @@ def main():
     parser.add_argument('-port', help='port number',
                     type=int, required=False, default=8002)
     parser.add_argument('-percentages', help='delta epsilon',
-                    type=float, nargs='*', required=False, default=[1,3,5,10, 20])
+                    type=float, nargs='*', required=False, default=[0.5,1,5,10])
 
     script_args = parser.parse_args()
 

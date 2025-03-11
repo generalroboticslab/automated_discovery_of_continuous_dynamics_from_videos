@@ -18,6 +18,7 @@ from inspect import signature
 
 import pytorch_lightning as pl
 import wandb
+import random
 
 from torchvision import transforms
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
@@ -1230,18 +1231,38 @@ class RegressEvaluator(Callback):
         return data_trajectories, output_trajectories
 
 
-    def find_equilibrium_mlp(self, ids, data, pl_module, output, num_guesses=10, num_samples=10, num_steps=60, epsilon_percentages=[], delta_percentages=[]):
+    def find_equilibrium_mlp(self, ids, data, pl_module, output, num_guesses=10, num_samples=10, num_directions=10, num_steps=300, epsilon_percentages=[], delta_percentages=[]):
+
+        def make_rand_vector(dims):
+            vec = [random.gauss(0, 1) for i in range(dims)]
+            mag = sum(x**2 for x in vec) ** .5
+            return [x/mag for x in vec]
+
 
         save_path = os.path.join(self.task_log_dir, f'mlp_equilibrium')
         mkdir(save_path)
 
         def mlp_f(y): return pl_module.model(torch.tensor(y.astype(np.float32)).unsqueeze(0).cuda()).cpu().detach().numpy().squeeze()
 
+        data_max = np.max(data, axis=0)
+        data_min = np.min(data, axis=0)
+        nsv_range = data_max - data_min
+
+        # Candidations from Test Data
         indices = np.argsort(np.linalg.norm(output, axis=1))
         guesses = data[indices[:num_guesses]]
-        
-        # Candidate per trajectory
-        if pl_module.dataset == 'cylindrical_flow':
+
+        # Extra Candidates from grid
+        if pl_module.dataset == 'double_pendulum':
+            g = np.mgrid[0:1:10j,0:1:10j,0:1:10j,0:1:10j]
+            g =  data_min + nsv_range * np.transpose(g, (1,2,3,4,0)).reshape(-1,4)
+            g_tensor = torch.tensor(g.astype(np.float32)).to(pl_module.device)
+            g_output = pl_module.model(g_tensor).cpu().detach().numpy()
+            g_indices = np.argsort(np.linalg.norm(g_output, axis=1))
+            g_guesses = g[g_indices[:num_guesses]]
+            guesses = np.concatenate([guesses, g_guesses], axis=0)
+        # Candidates per trajectory
+        elif pl_module.dataset == 'cylindrical_flow':
 
             data_trajectories, output_trajectories = self.trajectories_from_data_ids(ids, data, output)
 
@@ -1303,10 +1324,12 @@ class RegressEvaluator(Callback):
                 delta = .01 * p * nsv_range
                 distance.append([])
                 initial_distance.append([])
-                for i in range(num_samples):
-                    max_dist, initial_dist = self.mlp_pred_equilibrium_sample(i, pl_module, guess_idx, torch.tensor(mlp_root.astype(np.float32)).reshape((1,-1)).cuda(), steps=num_steps, delta=delta)
-                    distance[-1].append(max_dist)
-                    initial_distance[-1].append(initial_dist)
+                for i in range(num_directions):
+                    rand_dir = torch.tensor(make_rand_vector(mlp_root.shape[0])).float().cuda()
+                    for j in range(1, num_samples+1):
+                        max_dist, initial_dist = self.mlp_pred_equilibrium_sample(i, pl_module, guess_idx, torch.tensor(mlp_root.astype(np.float32)).reshape((1,-1)).cuda(), rand_dir, data_max, data_min, steps=num_steps, delta=delta * (j/num_samples))
+                        distance[-1].append(max_dist)
+                        initial_distance[-1].append(initial_dist)
 
             mkdir(os.path.join(save_path, f'{guess_idx}'))
             save_image(image.cpu(), os.path.join(save_path, f'{guess_idx}.png'), nrow=1)
@@ -1334,7 +1357,7 @@ class RegressEvaluator(Callback):
                 os.system(f'cp \"{save_path}/{guess_idx}/0.png\" \"{save_path}/{guess_idx}/m_0.png\"')
                 os.system(f'cp \"{save_path}/{guess_idx}/1.png\" \"{save_path}/{guess_idx}/m_1.png\"')
         
-
+        print("Analyzing Stabilities")
         delta_per_epsilon, stabilities = self.eq_stability_analysis(initial_distances, distances, nsv_range, epsilon_percentages)
         eq_points = {"guesses": guesses,
                             "roots": roots,
@@ -1356,15 +1379,14 @@ class RegressEvaluator(Callback):
         delta_per_epsilon = []
         stabilities = []
 
-        print("Analyzing Stabilities")
         for i_d, max_d in tqdm(zip(initial_distances, distances)):
 
             initial_d = np.array(i_d).flatten()
             maximum_d = np.array(max_d).flatten()
 
             i_d_2_max_d = {i: d for i, d in zip(initial_d, maximum_d)}
-            sorted_i_d_2_max_d = sorted(i_d_2_max_d, key = i_d_2_max_d.get)
-
+            max_d_sorted_i_d_2_max_d = sorted(i_d_2_max_d, key = i_d_2_max_d.get)
+            i_d_sorted_i_d_2_max_d = list(dict(sorted(i_d_2_max_d.items(), key=lambda x: (x[0], x[1]))).keys())
             result = []
 
             for p in epsilon_percentages:
@@ -1372,13 +1394,21 @@ class RegressEvaluator(Callback):
                 
                 result_p = None
 
-                for i in sorted_i_d_2_max_d:
+                for i in max_d_sorted_i_d_2_max_d:
 
                     d = i_d_2_max_d[i]
                     d_percentage = "{:.2f}".format(100 * d/nsv_range)
 
-                    if d  < e:
-                        result_p = f'epsilon_{p}%_{e}_delta_{d_percentage}%_{d}'
+                    # Maximum Distance Less than Epsilon
+                    if d < e:
+                        # Check all trajectories that start closer
+                        all_less = True
+                        for closer_i_d in i_d_sorted_i_d_2_max_d[:i_d_sorted_i_d_2_max_d.index(i)]:
+                            if i_d_2_max_d[closer_i_d] > e or i_d_2_max_d[closer_i_d] > d:
+                                all_less = False
+                        # All trajectories less than or equal to delta satisfy epsilon condition
+                        if all_less:
+                            result_p = f'epsilon_{p}%_{e}_delta_{d_percentage}%_{d}'
                     else:
                         break
                 
@@ -1389,28 +1419,28 @@ class RegressEvaluator(Callback):
         
         return delta_per_epsilon, stabilities
     
-    def mlp_pred_equilibrium_sample(self, trial_num, pl_module, root_idx, begin_nsv, steps=60, delta=0.01):
+    def mlp_pred_equilibrium_sample(self, trial_num, pl_module, root_idx, begin_nsv, rand_dir, data_max, data_min, steps=60, delta=0.01):
 
-        nsv_sample = torch.normal(mean=begin_nsv, std=delta)
-
+        # Initial point on hypersphere with radius delta
+        nsv_sample = begin_nsv + rand_dir * delta
         initial_dist = torch.sqrt(torch.sum(((nsv_sample - begin_nsv)**2)))
 
-        while initial_dist >= delta:
-
-            nsv_sample = torch.normal(mean=begin_nsv, std=delta)
-
-            initial_dist = torch.sqrt(torch.sum(((nsv_sample - begin_nsv)**2)))
-
         t_span = (pl_module.dt * torch.arange(steps+1)).float()
-        
+       
         _, pred = pl_module.ode(nsv_sample.cuda(), t_span)
 
         pred = pred.permute(1, 0, 2).squeeze()
 
         pred_arr = pred.clone().detach().cpu().numpy()
+
+        # If trajectory leaves bounds, max distance is infinity
+        for step in range(pred_arr.shape[0]):
+            if np.any(pred_arr[step,:] > data_max) or np.any(pred_arr[step,:] < data_min):
+                return np.inf, initial_dist.cpu().detach().numpy()
         
         pred_distance = torch.sqrt(torch.sum((pred - begin_nsv)**2, dim=1))
 
+        # Trajectory remained within bounds
         return pred_distance.max().cpu().detach().numpy(), initial_dist.cpu().detach().numpy()
 
     def rollout_equilibrium(self, pl_module, root_idx, begin_data, steps=60, hybrid_step=3):
