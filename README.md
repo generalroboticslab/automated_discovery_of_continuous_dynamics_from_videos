@@ -145,7 +145,7 @@ Alternatively, a detached screen can be created to run all commands in the backg
 bash scripts/screen_run.sh {dataset_name} trial {seed} {GPU number}
 ```
 
-The run time for each random seed ranges from 48 hours to 1 week, depending on the dataset. 
+The full run time for each random seed ranges from 48 hours to 1 week, depending on the dataset. 
 
 ### Summarizing Results from Multiple Seeds
 
@@ -170,6 +170,36 @@ When ```mode``` is set to ```eq```, you can optionally specify the model_type pa
 A visualization of the results can be viewed through a local browser at http://127.0.0.1:{port_number}, where port number is set to 8002 by default.
 
 All other results are printed in the terminal and visualizations are stored under the ```summary``` sub directory.
+
+### Generating Sample Trajectories and Videos
+
+All trajectory plots and videos shown in Figures 3, 5, 8 and 9 can be recreated by a single command.
+
+```
+bash scripts/downstream.sh {GPU number}
+```
+
+**Please make sure the models corresponding to the following random seeds have been trained for their respective datasets:**
+**- Spring Mass: Seed 4**
+**- Single Pendulum: Seed 1**
+**- Double Pendulum: Seeds 2**
+
+All results are stored under the ```downstream/{model_full_name}/near_eq```, ```downstream/{model_full_name}/timeVariation``` and  ```downstream/{model_full_name}/damping```  sub directories.
+
+### Chaos Analysis
+
+We further provide the code to reproduce the results for chaos analysis shared in Section 2.3
+
+First, please make sure all long sequence trajectories have been encoded using the following command. 
+
+```
+bash scripts/double_pendulum_chaos.sh {GPU number}
+```
+**NOTE: The [double_pendulum_long_sequence](### Downloading Data) dataset must be downloaded under the ```data``` directory.**
+
+All visualizations and encoded trajectories are stored under the ```downstream/{model_full_name}/chaos``` and ```downstream/{model_full_name}/chaos_specific``` sub directories.
+
+After the script is finished, all chaos analysis plots and visualizations can be reproduced by following the ```double_pendulum_analysis.ipynb``` notebook under the ```utils``` directory.
 
 ## Model Full Name
 
