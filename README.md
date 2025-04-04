@@ -196,7 +196,7 @@ bash scripts/double_pendulum_chaos.sh {GPU number}
 
 All visualizations and encoded trajectories are stored under the ```downstream/{model_full_name}/chaos``` and ```downstream/{model_full_name}/chaos_specific``` sub directories.
 
-After the script is finished, all chaos analysis plots and visualizations can be reproduced by following the ```double_pendulum_analysis.ipynb``` notebook under the ```utils``` directory.
+After the script is finished, all chaos analysis plots and visualizations can be reproduced by following this [notebook](utils/double_pendulum_analysis.ipynb) under the ```utils``` directory.
 
 ## Model Full Name
 
