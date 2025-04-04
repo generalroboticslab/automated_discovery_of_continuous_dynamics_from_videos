@@ -179,10 +179,7 @@ All trajectory plots and videos shown in Figures 3, 5, 8 and 9 can be recreated 
 bash scripts/downstream.sh {GPU number}
 ```
 
-**Please make sure the models corresponding to the following random seeds have been trained for their respective datasets:**
-**- Spring Mass: Seed 4**
-**- Single Pendulum: Seed 1**
-**- Double Pendulum: Seeds 2**
+**Please make sure the models corresponding to the following random seeds have been trained for their respective datasets: (Spring Mass: Seed 4 Single Pendulum: Seed 1, Double Pendulum: Seed 2) by running the [provided script](### Training and Testing all models for a given dataset and random seed)**
 
 All results are stored under the ```downstream/{model_full_name}/near_eq```, ```downstream/{model_full_name}/timeVariation``` and  ```downstream/{model_full_name}/damping```  sub directories.
 
