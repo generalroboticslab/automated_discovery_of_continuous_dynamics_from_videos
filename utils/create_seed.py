@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     data_filepath = 'data'
     object_name = script_args.dataset
-    num_vids = 1100 if object_name == 'double_pendulum' else 1200
+    num_vids = 1099 if 'double_pendulum' in object_name  else 1200
     seeds = [1,3,4] if object_name == 'spring_mass' else [1,2,3]
     for seed in seeds:
         create_random_data_splits(seed, data_filepath, object_name, num_vids)

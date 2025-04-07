@@ -18,7 +18,7 @@ margin: 0.1
 smooth_loss_type:  'cyclic-neighbor-distance-2'
 smooth_loss_weight: 16
 regularize_loss_type: 'sinkhorn'
-regularize_loss_weight: 16
+regularize_loss_weight: 8
 architecture: "default"
 method: "default"
 annealing: True

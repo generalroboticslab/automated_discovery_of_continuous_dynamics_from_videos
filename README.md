@@ -13,7 +13,7 @@ Duke University
 ### [Project Website](http://generalroboticslab.com/SmoothNSV) | [Video](https://youtu.be/4WcVoyspTw0?si=YacImYAG67KXJzKh) | [Paper](https://arxiv.org/abs/2410.11894)
 
 ## Overview
-This repo contains the PyTorch implementation for our paper "Automated Discovery of Continuous Dynamics From Videos".
+This repo contains the PyTorch implementation for our paper "Automated Discovery of Operable Dynamics From Videos".
 
 ![teaser](figures/teaser.gif)
 
@@ -386,7 +386,7 @@ All necessary tests are built into the testing pipeline such as
 - Visualizing Images from Integrated NSV Trajectories
 - Equilibrium Identification and Stability Analysis
 
-All results are stored under the 'tasks' sub directory
+All results are stored under the ```tasks``` sub directory
 
 ### Downstream Tasks
 
@@ -401,7 +401,7 @@ The task keywords and their respective downstream tasks are as follows:
 - dt : synthesize new videos with variable frame rate
 - chaos : detect chaos (Only for the double pendulum dataset - Must have ```double_pendulum_long_sequence```)
 
-All results are stored under the 'downstream' sub directory
+All results are stored under the ```downstream``` sub directory
 
 
 ## License
