@@ -398,16 +398,16 @@ Port number is set to 8002 by default.
 
 ## Downstream Tasks With Individual Models
 
-The downstream tasks shown in the paper can be reproduced with a single command
+The downstream tasks shown in the paper can be run for a specified model with a single command
 ```
 python downstream.py -config {path_to_config} -task {task keyword}
 ```
 
 The task keywords and their respective downstream tasks are as follows:
-- damping : synthesize new videos with damping 
-- near_eq : sample trajectories near the identified stable equilibrium state
-- dt : synthesize new videos with variable frame rate
-- chaos : detect chaos (Only for the double pendulum dataset - Must have [```double_pendulum_long_sequence```](#downloading-data))
+- damping : synthesize new videos with damping (neural state vector field)
+- near_eq : sample trajectories near the identified stable equilibrium state (neural state vector field)
+- dt : synthesize new videos with variable frame rate (neural state vector field)
+- chaos : detect chaos (Only for the double pendulum dataset - Must have [```double_pendulum_long_sequence```](#downloading-data)) (neural state variable autoencoder)
 
 All results are stored under the ```downstream``` sub directory
 
