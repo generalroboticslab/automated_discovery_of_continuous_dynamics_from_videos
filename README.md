@@ -159,7 +159,7 @@ All trajectory plots and videos shown in Figures 3, 5, 8 and 9 can be recreated 
 bash scripts/downstream.sh {GPU number}
 ```
 
-All results are stored under the ```downstream/{model_full_name}/near_eq```, ```downstream/{model_full_name}/timeVariation``` and  ```downstream/{model_full_name}/damping```  sub directories.
+All results are stored under the ```downstream``` sub directory.
 
 **NOTE: Please make sure the models have been trained by running the [provided script](#training-and-testing-all-models-for-a-given-dataset-and-random-seed) for each dataset with the corresponding random seeds: (Spring Mass: Seed 4, Single Pendulum: Seed 1, Double Pendulum: Seed 2)** 
 
@@ -173,9 +173,9 @@ First, please make sure all long sequence trajectories have been encoded using t
 bash scripts/double_pendulum_chaos.sh {GPU number}
 ```
 
-All visualizations and encoded trajectories are stored under the ```downstream/{model_full_name}/chaos``` and ```downstream/{model_full_name}/chaos_specific``` sub directories.
-
 After the script is finished, all chaos analysis plots and visualizations can be reproduced by following this [notebook](utils/double_pendulum_analysis.ipynb) under the ```utils``` directory.
+
+All results are stored under the ```downstream``` sub directory.
 
 **NOTE: The [double_pendulum_long_sequence dataset](#downloading-data) must exist under the ```data``` directory.**
 
@@ -410,7 +410,7 @@ The task keywords and their respective downstream tasks are as follows:
 - dt : synthesize new videos with variable frame rate (neural state vector field)
 - chaos : detect chaos (Only for the double pendulum dataset - Must have [```double_pendulum_long_sequence```](#downloading-data)) (neural state variable autoencoder)
 
-All results are stored under the ```downstream``` sub directory
+All results are saved under the ```downstream/{model_full_name}/damping```, ```downstream/{model_full_name}/near_eq```, ```downstream/{model_full_name}/timeVariation``` and    ```downstream/{model_full_name}/chaos``` sub directories respectively. 
 
 ## License
 
