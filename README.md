@@ -115,23 +115,23 @@ We further provide an additional dataset used for chaos detection in the double 
 
 ### Generating Data
 
-We provide the scripts to generate the ```spring_mass``` and ```single_pendulum``` datasets.
-
-You can generate the corresponding dataset with the following command
+Alternatively, you can generate the  ```spring_mass``` and ```single_pendulum``` datasets with the following command
 ```
 python utils/data_collect/{dataset_name}/make_data.py
 ```
 
+For details on generating the ```cylindrical_flow``` dataset, please refer to the [README](utils/data_collect/cylindrical_flow/README.md) in  ```utils/data_collect/cylindrical_flow```.
+
 The datasets will be saved as ```data/{dataset_name}```.
 
-You must also run the following script to generate the random train, test, validation splits
-
+**NOTE: If you decide to generate the datasets, you must also run the following script to generate the random train, test, validation splits**
 ```
 python utils/create_seed.py -dataset {dataset_name} 
 ```
-**If you have updated the ```data_filepath``` item in the ```config.yaml``` files in ```configs``` you must save the generated dataset as ```data/{dataset_name}```where ```data``` is your customized dataset folder**.
 
-For details on generating the ```cylindrical_flow``` dataset, please refer to the [README](utils/data_collect/cylindrical_flow/README.md) in  ```utils/data_collect/cylindrical_flow```
+**NOTE: If you have updated the ```data_filepath``` item in the ```config.yaml``` files in ```configs``` you must move the generated dataset as ```data/{dataset_name}```where ```data``` is your customized dataset folder**.
+
+For convenience, we highly recommend downloading the provided datasets through the provided [links](#downloading-data).
 
 ## Reproducing Experimental Results
 
