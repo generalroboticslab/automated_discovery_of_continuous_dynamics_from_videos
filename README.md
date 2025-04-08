@@ -70,7 +70,7 @@ We first introduce the naming convention of the saved files so that it is clear 
 2. Inside the Outputs folder, the structure and contents are:
     ```
     \outputs/{dataset_name}
-        \wandb                          [saved wandb logs]
+        \wandb                         [saved wandb logs]
             \{wandb run ID}
         \checkpoints                   [saved checkpoints]
             \{model_full_name}
@@ -91,6 +91,8 @@ We first introduce the naming convention of the saved files so that it is clear 
         \summary                       [summary visualizations]
             \{model_full_name}
     ```
+
+```{dataset_name}``` denotes the name of the [corresponding dataset](#downloading-data) and  ```{model_full_name}``` denotes the name of the corresponding model based on our [naming convention](#model-full-name).
 
 We utilize [Weights and Biases](https://wandb.ai/) for all model training and testing logs.
 
