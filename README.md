@@ -387,6 +387,9 @@ The results of testing a particular neural state variable model's results can be
 python main.py -config {path_to_config} -mode show {-port {port_number}}
 ```
 
+A visualization of the results can be viewed through a local browser at http://127.0.0.1:{port_number}. 
+Port number is set to 8002 by default.
+
 ### Neural State Vector Field
 
 Similarly, a summary of testing a neural state vector field model can be videwed by the following command
