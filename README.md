@@ -41,8 +41,9 @@ If you find our paper or codebase helpful, please consider citing:
 - [Reproducing Results](#reproducing-experimental-results)
 - [Model Full Name](#model-full-name)
 - [Configuration File](#configuration-file)
-- [Viewing Results For Individual Models](#viewing-results-for-individual-models)
 - [Training and Testing Individual Models](#training-and-testing-individual-models)
+- [Viewing Results For Individual Models](#viewing-results-for-individual-models)
+- [Downstream Tasks With Individual Models](#downstream-tasks-with-individual-models)
 - [License](#license)
 
 ## Installation
@@ -376,12 +377,16 @@ All necessary tests are built into the testing pipeline such as
 
 All results are stored under the ```tasks``` sub directory
 
-### Viewing Results For Individual Models
+## Viewing Results For Individual Models
+
+### Neural State Variables Autoencoder
 
 The results of testing a particular neural state variable model's results can be viewed by the following command
 ```
 python main.py -config {path_to_config} -mode show {-port {port_number}}
 ```
+
+### Neural State Vector Field
 
 Similarly, a summary of testing a neural state vector field model can be videwed by the following command
 ```
@@ -391,7 +396,7 @@ python regress.py -config {path_to_config} -mode show {-port {port_number}}
 A visualization of the results can be viewed through a local browser at http://127.0.0.1:{port_number}. 
 Port number is set to 8002 by default.
 
-### Downstream Tasks
+## Downstream Tasks With Individual Models
 
 The downstream tasks shown in the paper can be reproduced with a single command
 ```
