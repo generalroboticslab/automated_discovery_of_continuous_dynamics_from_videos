@@ -149,6 +149,7 @@ bash scripts/screen_run.sh {dataset_name} trial {seed} {GPU number}
 
 The full run time for each random seed ranges from 48 hours to 1 week, depending on the dataset. 
 
+**NOTE: For the ```cylindrical_flow``` dataset, we utilize a neural network to map the pixel color to a vector field quantity for physics analysis. This model is saved in the [dataset folder](#downloading-data) as a torchscript file ```cylindrical_flow/c2idx.pt```.**
 
 ### Generating Sample Trajectories and Videos
 
@@ -199,8 +200,6 @@ The task keywords and their respective summary results are as follows:
 All results are printed in the terminal and visualizations are stored under the ```summary``` sub directory.
 
 **NOTE: (Only for when ```mode``` is set to ```eq```) you can optionally specify the model_type parameter with which nsvf to summarize (```base``` - non smooth neural state variables, filtered; ```smooth``` - smooth neural state variables, filtered; or ```noFilter``` - smooth neural state variables, unfiltered). The default is set to ```smooth```. A visualization of the results can be viewed through a local browser at http://127.0.0.1:{port_number}, where port number is set to 8002 by default.**
-
-**NOTE: For the ```cylindrical_flow``` dataset, we utilize a neural network to map the pixel color to a vector field quantity for physics analysis. This model is saved in the [dataset folder](#downloading-data) as a torchscript file ```cylindrical_flow/c2idx.pt```**
 
 ## Model Full Name
 
