@@ -340,7 +340,7 @@ def damping(args, damping=0.5, num_videos=6, video_len=2, steps=120, delta_perce
                     undamped_pred_output, _, _ = nsv_model.decoder(undamped_pred)
                 else:
                     damped_pred_output, _ = nsv_model.decoder(damped_pred)
-                    undamped_pred_output, _, _ = nsv_model.decoder(undamped_pred)
+                    undamped_pred_output, _ = nsv_model.decoder(undamped_pred)
                 
                 mkdir(os.path.join(save_path, f'damped_{i}'))
                 mkdir(os.path.join(save_path, f'undamped_{i}'))
