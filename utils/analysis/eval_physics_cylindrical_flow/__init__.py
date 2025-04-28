@@ -6,7 +6,7 @@ from tqdm import tqdm
 from .energy_estimator import obtain_energy
 
 
-def eval_phys_cylindrical_flow(frames, c2idx):
+def eval_phys_cylindrical_flow(frames, c2idx, longer=False):
 
     phys_vars_list =  ['reject', 'total energy']
 
@@ -18,7 +18,7 @@ def eval_phys_cylindrical_flow(frames, c2idx):
 
     for p in range(num_frames):
 
-        reject_p, e_p, img_marked = obtain_energy(frames[p], c2idx)
+        reject_p, e_p, img_marked = obtain_energy(frames[p], c2idx, longer)
         marked_images.append(img_marked)
         if reject_p:
             reject[p] = True
@@ -51,7 +51,7 @@ def eval_phys_data_cylindrical_flow(data_filepath, num_vids, num_frms, save_path
         for p in images:
             frame_p = cv2.imread(os.path.join(seq_filepath, p))
             frames.append(frame_p)
-        phys_tmp, m_i = eval_phys_cylindrical_flow(frames, c2idx)
+        phys_tmp, m_i = eval_phys_cylindrical_flow(frames, c2idx, longer='filtered' not in save_path)
         marked_images.append(m_i)
         for p_var in phys_vars_list:
             phys[p_var].append(phys_tmp[p_var])

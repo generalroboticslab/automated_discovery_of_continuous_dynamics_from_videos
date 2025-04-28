@@ -51,14 +51,17 @@ def estimate_energy(v):
     
     return e
 
-def obtain_energy(img, c2idx):
+def obtain_energy(img, c2idx, longer=False):
     img_marked = img.copy()
 
     rej, v = get_vectorField(img, c2idx)
     if not rej:
         energy = estimate_energy(v)
         # mark the estimated energy 
-        cv2.putText(img_marked, f'{energy:.2f}', (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+        if longer:
+            cv2.putText(img_marked, f'{energy:.4f}', (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+        else:
+            cv2.putText(img_marked, f'{energy:.2f}', (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
     else:
         # mark the rejection
         cv2.putText(img_marked, 'Reject', (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)

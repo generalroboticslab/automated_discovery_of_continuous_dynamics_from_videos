@@ -1,11 +1,11 @@
 seed: 2
-nsv_model_name: 'smooth_2_high-dim-latent_1.0_neighbor-distance-2_1024.0_sinkhorn_8.0_True'
+nsv_model_name: 'smooth_2_high-dim-latent_1.0_cyclic-neighbor-distance-2_16_sinkhorn_8_True'
 latent_model_name: 'encoder-decoder-64'
 model_name: 'regressDeeper'
 reconstruct_loss_weight: 1.0
 pred_length: 56
 
-lr: 0.007086
+lr: 0.0003 #0.007086
 if_cuda: True
 gamma: 0.5
 log_dir: 'outputs/logs'

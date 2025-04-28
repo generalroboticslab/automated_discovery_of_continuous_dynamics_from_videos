@@ -5,7 +5,7 @@ from utils.misc import *
 import cv2 
 from .analysis import Physics_Evaluator
 
-def generate_video_directory(fig_path, path_nums, flag="", delete_after=False):
+def generate_video_directory(fig_path, path_nums, flag="", fps=60, delete_after=False):
 
     vid_folder = os.path.join(fig_path, flag+'videos') if not delete_after else fig_path
     if not delete_after:
@@ -14,10 +14,10 @@ def generate_video_directory(fig_path, path_nums, flag="", delete_after=False):
     print("Creating Videos")
     for i in tqdm(path_nums):
 
-        generate_video(fig_path, str(i), os.path.join(vid_folder, f'{i}.mp4'), delete_after=delete_after)
+        generate_video(fig_path, str(i), os.path.join(vid_folder, f'{i}.mp4'), fps=fps, delete_after=delete_after)
 
 
-def generate_video(fig_path, path_num, dst_path, fps=12, delete_after=False):
+def generate_video(fig_path, path_num, dst_path, fps=60, delete_after=False):
 
     fig_path = os.path.join(fig_path, path_num)
 
@@ -71,7 +71,7 @@ def update_figure(fig, small_margin=False):
     if small_margin:
         fig.update_layout(margin=dict(l=50, r=30, t=20, b=20))
 
-def update_figure_3d(fig):
+def update_figure_3d(fig, small_margin=False):
 
 
     fig.update_layout(legend=go.layout.Legend(traceorder="normal",
@@ -108,7 +108,9 @@ def update_figure_3d(fig):
                     scene_camera = dict(eye=dict(x=1.5, y=1.5, z=1.2), center=dict(x=0, y=0, z=-0.3)),
                     margin=dict(l=50, r=30, t=20, b=20)
                      )
-
+    if small_margin:
+        fig.update_layout(margin=dict(l=50, r=30, t=20, b=20))
+        
 def update_figure_small(fig, small_margin=False):
     fig.update_xaxes(showgrid=False, tickfont=dict(family="Helvetica Neue", size=18, color="black"),tickprefix="<b>",ticksuffix ="</b>")
     fig.update_yaxes(showgrid=False, tickfont=dict(family="Helvetica Neue", size=18, color="black"),tickprefix="<b>",ticksuffix ="</b>")

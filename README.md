@@ -13,7 +13,7 @@ Duke University
 ### [Project Website](http://generalroboticslab.com/SmoothNSV) | [Video](https://youtu.be/4WcVoyspTw0?si=YacImYAG67KXJzKh) | [Paper](https://arxiv.org/abs/2410.11894)
 
 ## Overview
-This repo contains the PyTorch implementation for our paper "Automated Discovery of Continuous Dynamics From Videos".
+This repo contains the PyTorch implementation for our paper "Automated Discovery of Operable Dynamics From Videos".
 
 ![teaser](figures/teaser.gif)
 
@@ -41,8 +41,9 @@ If you find our paper or codebase helpful, please consider citing:
 - [Reproducing Results](#reproducing-experimental-results)
 - [Model Full Name](#model-full-name)
 - [Configuration File](#configuration-file)
-- [Viewing Results For Individual Models](#viewing-results-for-individual-models)
 - [Training and Testing Individual Models](#training-and-testing-individual-models)
+- [Viewing Results For Individual Models](#viewing-results-for-individual-models)
+- [Downstream Tasks With Individual Models](#downstream-tasks-with-individual-models)
 - [License](#license)
 
 ## Installation
@@ -62,15 +63,15 @@ The installation time is less than 10 minutes.
 
 We first introduce the naming convention of the saved files so that it is clear what will be saved and where they will be saved.
 
-1. Output folder naming convention:
+1. Outputs folder naming convention:
     ```
     outputs/{dataset_name}
     ```
-2. Inside the logs folder, the structure and contents are:
+2. Inside the Outputs folder, the structure and contents are:
     ```
     \outputs/{dataset_name}
-        \logs                          [saved logs]
-            \{model_full_name}
+        \wandb                         [saved wandb logs]
+            \{wandb run ID}
         \checkpoints                   [saved checkpoints]
             \{model_full_name}
         \predictions                   [saved predictions]
@@ -91,6 +92,10 @@ We first introduce the naming convention of the saved files so that it is clear 
             \{model_full_name}
     ```
 
+```{dataset_name}``` denotes the name of the [corresponding dataset](#downloading-data) and  ```{model_full_name}``` denotes the name of the corresponding model based on our [naming convention](#model-full-name).
+
+We utilize [Weights and Biases](https://wandb.ai/) for all model training and testing logs.
+
 ## Data Preparation
 
 Save all datasets as ```data/{dataset_name}```, where ```data``` is your customized dataset folder. **Please make sure that ```data``` is an absolute path and you need to change the ```data_filepath``` item in the ```config.yaml``` files in ```configs``` to specify your customized dataset folder if you decide to use a different directory name**.
@@ -104,32 +109,29 @@ We provide four datasets with their own download links below.
 - [double_pendulum](https://drive.google.com/file/d/1zC-XsMLocUIQvG9O9Q0PUUvlU8fwavoT/view?usp=sharing) (double pendulum system)
 - [cylindrical_flow](https://drive.google.com/file/d/1crLKV1gqVIbHF-yHuKIOVftS0FpUU1nI/view?usp=sharing) (cylindrical flow system)
 
-**For the ```cylindrical_flow``` dataset, we utilize a neural network to map the pixel color to a vector field quantity for physics analysis. This model is saved with the dataset as a torchscript file ```cylindrical_flow/c2idx.pt```**
-
-We further provide two additional datasets used for our experiments with their own download links below.
+We further provide an additional dataset used for chaos detection in the double pendulum system below.
 
 - [double_pendulum_long_sequence](https://drive.google.com/file/d/1K-bQlDASL1Tiz9JYQwcTmh6O6LaktoQ7/view?usp=sharing) (double pendulum system - long sequences for chaos detection)
-- [cylindrical_flow_raw]() (cylindrical flow system - raw vector field data)
 
 ### Generating Data
 
-We also provide the scripts to generate the ```spring_mass``` and ```single_pendulum``` datasets.
-
-You can generate the corresponding dataset with the following command
+Alternatively, you can generate the  ```spring_mass``` and ```single_pendulum``` datasets with the following command
 ```
 python utils/data_collect/{dataset_name}/make_data.py
 ```
 
+For details on generating the ```cylindrical_flow``` dataset, please refer to the [README](utils/data_collect/cylindrical_flow/README.md) in  ```utils/data_collect/cylindrical_flow```.
+
 The datasets will be saved as ```data/{dataset_name}```.
 
-You must also run the following script to generate the random train, test, validation splits
-
+**NOTE: If you decide to generate the datasets, you must also run the following script to generate the random train, test, validation splits**
 ```
 python utils/create_seed.py -dataset {dataset_name} 
 ```
-**If you have updated the ```data_filepath``` item in the ```config.yaml``` files in ```configs``` you must save the generated dataset as ```data/{dataset_name}```where ```data``` is your customized dataset folder**.
 
-For details on generating the ```cylindrical_flow``` dataset, please refer to the README in  ```utils/data_collect/cylindrical_flow```
+**NOTE: If you have updated the ```data_filepath``` item in the ```config.yaml``` files in ```configs``` you must move the generated dataset as ```data/{dataset_name}```where ```data``` is your customized dataset folder**.
+
+For convenience, we highly recommend downloading the provided datasets through the provided [links](#downloading-data).
 
 ## Reproducing Experimental Results
 
@@ -145,11 +147,41 @@ Alternatively, a detached screen can be created to run all commands in the backg
 bash scripts/screen_run.sh {dataset_name} trial {seed} {GPU number}
 ```
 
-The run time for each random seed ranges from 48 hours to 1 week, depending on the dataset. 
+The full run time for each random seed ranges from 48 hours to 1 week, depending on the dataset. 
 
-### Summarizing Results from Multiple Seeds
+**NOTE: For the ```cylindrical_flow``` dataset, we utilize a neural network to map the pixel color to a vector field quantity for physics analysis. This model is saved in the [dataset folder](#downloading-data) as a torchscript file ```cylindrical_flow/c2idx.pt```.**
 
-After running the above for all seeds, the averaged results can be achieved by a single command
+### Generating Sample Trajectories and Videos
+
+All trajectory plots and videos shown in Figures 3, 5, 8 and 9 can be recreated by a single command.
+
+```
+bash scripts/downstream.sh {GPU number}
+```
+
+All results are stored under the ```downstream``` sub directory.
+
+**NOTE: Please make sure the models have been trained by running the [provided script](#training-and-testing-all-models-for-a-given-dataset-and-random-seed) for each dataset with the corresponding random seeds: (Spring Mass: Seed 4, Single Pendulum: Seed 1, Double Pendulum: Seed 2)** 
+
+### Chaos Analysis
+
+We further provide the code to reproduce the results for chaos analysis shared in Section 2.3
+
+First, please make sure all long sequence trajectories have been encoded using the following command. 
+
+```
+bash scripts/double_pendulum_chaos.sh {GPU number}
+```
+
+After the script is finished, all chaos analysis plots and visualizations can be reproduced by following this [notebook](utils/double_pendulum_analysis.ipynb) under the ```utils``` directory.
+
+All results are stored under the ```downstream``` sub directory.
+
+**NOTE: The [double_pendulum_long_sequence dataset](#downloading-data) must exist under the ```data``` directory.**
+
+### Other Results - Summarizing All Random Seeds
+
+Other results (averaged over all three random seeds) can be generated using the following command
 ```
 python summarize.py -dataset {dataset_name} -mode {task keyword} {-port {port_number}} {-model_type {base / smooth / noFilter}}
 ```
@@ -165,11 +197,9 @@ The task keywords and their respective summary results are as follows:
 - ```discrete``` : long term prediction accuracy comparison between nsvf trained as NeuralODE and trained explicitly on finite differences between states
 - ```eq```: all identified equilibrium states and their stability for nsvf trained on {model type}
 
-When ```mode``` is set to ```eq```, you can optionally specify the model_type parameter with which nsvf to summarize (```base``` - non smooth neural state variables, filtered; ```smooth``` - smooth neural state variables, filtered; or ```noFilter``` - smooth neural state variables, unfiltered). The default is set to ```smooth```.
+All results are printed in the terminal and visualizations are stored under the ```summary``` sub directory.
 
-A visualization of the results can be viewed through a local browser at http://127.0.0.1:{port_number}, where port number is set to 8002 by default.
-
-All other results are printed in the terminal and visualizations are stored under the ```summary``` sub directory.
+**NOTE: (Only for when ```mode``` is set to ```eq```) you can optionally specify the model_type parameter with which nsvf to summarize (```base``` - non smooth neural state variables, filtered; ```smooth``` - smooth neural state variables, filtered; or ```noFilter``` - smooth neural state variables, unfiltered). The default is set to ```smooth```. A visualization of the results can be viewed through a local browser at http://127.0.0.1:{port_number}, where port number is set to 8002 by default.**
 
 ## Model Full Name
 
@@ -318,22 +348,6 @@ Each model has a corresponding configuration file ```{regress / discrete}-{base 
 
  ```-filtered``` specifies whether or not we filter the trajectories before training.
 
-## Viewing Results For Individual Models
-
-A summary of a particular neural state variable model's results can be generated by the following command
-```
-python main.py -config {path_to_config} -mode show {-port {port_number}}
-```
-
-Similarly, a summary of a neural state vector field model can be generated by the following command
-```
-python regress.py -config {path_to_config} -mode show {-port {port_number}}
-```
-
-A visualization of the results can be viewed through a local browser at http://127.0.0.1:{port_number}. 
-Port number is set to 8002 by default.
-
-
 ## Training and Testing Individual Models
 
 ### Identifying Neural State Variables
@@ -345,7 +359,10 @@ python main.py -config {path_to_config} -mode {train/test}
 
 All necessary tests are built into the testing pipeline such as
 - Intrinsic Dimension Estimation
-- Smoothness Evaluation (Spline fitting/ Mean Variation)
+- Smoothness Evaluation 
+- Trajectory Visualization
+
+All results are stored under the ```tasks``` sub directory
 
 ### Constructing Neural State Vector Fields
 
@@ -359,23 +376,44 @@ All necessary tests are built into the testing pipeline such as
 - Visualizing Images from Integrated NSV Trajectories
 - Equilibrium Identification and Stability Analysis
 
-All results are stored under the 'tasks' sub directory
+All results are stored under the ```tasks``` sub directory
 
-### Downstream Tasks
+## Viewing Results For Individual Models
 
-The downstream tasks shown in the paper can be reproduced with a single command
+### Neural State Variables Autoencoder
+
+The results of testing a particular neural state variable model's results can be viewed by the following command
+```
+python main.py -config {path_to_config} -mode show {-port {port_number}}
+```
+
+A visualization of the results can be viewed through a local browser at http://127.0.0.1:{port_number}. 
+Port number is set to 8002 by default.
+
+### Neural State Vector Field
+
+Similarly, a summary of testing a neural state vector field model can be videwed by the following command
+```
+python regress.py -config {path_to_config} -mode show {-port {port_number}}
+```
+
+A visualization of the results can be viewed through a local browser at http://127.0.0.1:{port_number}. 
+Port number is set to 8002 by default.
+
+## Downstream Tasks With Individual Models
+
+The downstream tasks shown in the paper can be run for a specified model with a single command
 ```
 python downstream.py -config {path_to_config} -task {task keyword}
 ```
 
 The task keywords and their respective downstream tasks are as follows:
-- damping : synthesize new videos with damping 
-- near_eq : sample trajectories near the identified stable equilibrium state
-- dt : synthesize new videos with variable frame rate
-- chaos : detect chaos (Only for the double pendulum dataset - Must have ```double_pendulum_long_sequence```)
+- damping : synthesize new videos with damping (neural state vector field)
+- near_eq : sample trajectories near the identified stable equilibrium state (neural state vector field)
+- dt : synthesize new videos with variable frame rate (neural state vector field)
+- chaos : detect chaos (Only for the double pendulum dataset - Must have [```double_pendulum_long_sequence```](#downloading-data)) (neural state variable autoencoder)
 
-All results are stored under the 'downstream' sub directory
-
+All results are saved under the ```downstream/{model_full_name}/damping```, ```downstream/{model_full_name}/near_eq```, ```downstream/{model_full_name}/timeVariation``` and    ```downstream/{model_full_name}/chaos``` sub directories respectively. 
 
 ## License
 

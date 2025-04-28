@@ -20,7 +20,7 @@ from pytorch_lightning.strategies import DDPStrategy
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 
-def prepare_Trainer(args):
+def prepare_Trainer(args, is_test):
 
     output_path = os.path.join(os.getcwd(), args.output_dir, args.dataset)
     model_name = create_name(args)
@@ -41,10 +41,11 @@ def prepare_Trainer(args):
     
     callbacks = [custom_progress_bar, post_process, checkpoint_callback, cyclic_annealing_callback]
 
-    logger = pl_loggers.TensorBoardLogger(save_dir=output_path, 
-                                        name='logs', 
-                                        version=model_name, 
-                                        log_graph=True)
+    logger = pl_loggers.WandbLogger(save_dir=output_path, 
+                                        name=model_name, 
+                                        log_model=False,
+                                        project=args.dataset if not is_test else args.dataset + '_test',
+                                        resume="allow")
 
     trainer_kwargs = get_validArgs(Trainer, args)
 
@@ -100,7 +101,7 @@ def prepare_components(args, is_test):
 
     seed_everything(args.seed)
     
-    trainer = prepare_Trainer(args)
+    trainer = prepare_Trainer(args, is_test)
     dm = prepare_DataModule(args)
     net = prepare_Model(args, is_test)
 
@@ -165,7 +166,7 @@ def main():
     parser.add_argument('-port', help='port number',
                     type=int, required=False, default=8002)
     parser.add_argument('-percentages', help='delta epsilon',
-                    type=float, nargs='*', required=False, default=[1,3,5,10, 20])
+                    type=float, nargs='*', required=False, default=[0.5,1,5,10])
 
     script_args = parser.parse_args()
 

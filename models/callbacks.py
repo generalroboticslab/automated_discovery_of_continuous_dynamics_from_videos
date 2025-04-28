@@ -17,6 +17,8 @@ import sympy as sp
 from inspect import signature
 
 import pytorch_lightning as pl
+import wandb
+import random
 
 from torchvision import transforms
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
@@ -226,6 +228,7 @@ class SmoothnessEvaluator(Callback):
 
         np.save(os.path.join(task_log_dir, "invalid.npy"), np.array(invalid_trajectories))
 
+        visualizations = []
         print('Evaluating Smoothness')
         for p, traj in tqdm(trajectories.items()):
             traj_arr = np.array(traj)
@@ -233,8 +236,10 @@ class SmoothnessEvaluator(Callback):
             variation_mean[p], variation_ord2_mean[p] = self.calculate_variation_mean(traj_arr, dt)
             deviation[p] = self.calculate_deviation(traj_arr, dt)
             variation_max[p], variation_ord2_max[p] = self.calculate_variation_max(traj_arr, dt)
-            self.visualize_trajectory(traj_arr, task_log_dir, p, dt, data_min, data_max)
-        
+            plots = self.visualize_trajectory(traj_arr, task_log_dir, p, dt, data_min, data_max)
+            visualization = [p] + plots
+            visualizations.append(visualization)
+
         variation_mean_arr = np.array(list(variation_mean.values()))
         variation_ord2_mean_arr = np.array(list(variation_ord2_mean.values()))
         np.save(os.path.join(spline_fit_save_path, 'pre_filter_variation_mean.npy'), variation_mean_arr)
@@ -271,6 +276,11 @@ class SmoothnessEvaluator(Callback):
 
         print('pre filter tangling mean:', '%.2f' % (np.mean(pre_filter_tangling_arr)))
         print('pre filter tangling max:', '%.2f' % (np.max(pre_filter_tangling_max_arr)))
+
+        metrics = np.stack([np.array(list(trajectories.keys())), variation_mean_arr, variation_ord2_mean_arr, variation_max_arr, variation_ord2_max_arr, pre_filter_deviation_arr, np.array([t in invalid_trajectories for t in trajectories.keys()])], axis=1)
+
+        return visualizations, metrics
+
 
     def get_smooth_trajectory(self, traj, dt, window):
 
@@ -362,6 +372,12 @@ class SmoothnessEvaluator(Callback):
         
         data_full_max = np.stack([np.abs(data_min), data_max], axis=0).max(axis=0)
 
+        data_full_max = np.expand_dims(data_full_max, axis=0)
+        data_full_max = np.max(np.concatenate([data_full_max, np.abs(traj)], axis=0), axis=0)
+
+        if data_full_max.max() > 1.0:
+            self.looped_traj.append(vid_idx)
+
         if num_components == 4:
             fig = make_subplots(rows=num_components-1, cols=num_components-1)
         else:
@@ -372,13 +388,13 @@ class SmoothnessEvaluator(Callback):
                 for j in range(i+1, num_components):
                     fig.add_trace(go.Scatter(x=traj[:,i], y=traj[:,j], mode='lines+markers', 
                                 line=dict(color='rgba(0, 0, 0, 0.5)', width=3), marker=dict(size=4, color=np.arange(traj.shape[0]) * dt, colorscale='deep')), row=j, col=i+1)
-                    fig.update_xaxes(row=j, col=i+1, range=[-1.1*data_full_max[i], 1.1*data_full_max[i]], tickmode='linear', tick0 = int(10*data_full_max[i])/10, dtick=int(10*data_full_max[i])/10)
-                    fig.update_yaxes(row=j, col=i+1, range=[-1.1*data_full_max[j], 1.1*data_full_max[j]], tickmode='linear', tick0 = int(10*data_full_max[j])/10, dtick=int(10*data_full_max[j])/10)
+                    fig.update_xaxes(row=j, col=i+1, range=[-1.1*data_full_max[i], 1.1*data_full_max[i]], tickmode='linear', tick0 = int(10*data_full_max[i])/10, dtick=int(10*data_full_max[i])/10, showticklabels=(j==num_components - 1))
+                    fig.update_yaxes(row=j, col=i+1, range=[-1.1*data_full_max[j], 1.1*data_full_max[j]], tickmode='linear', tick0 = int(10*data_full_max[j])/10, dtick=int(10*data_full_max[j])/10, showticklabels=(i==0))
 
-                    if i == 0:
-                        fig.update_yaxes(title_text=f"<b>V{j+1}</b>",row=j, col=i+1)
-                    if j == num_components - 1:
-                        fig.update_xaxes(title_text=f"<b>V{i+1}</b>",row=j, col=i+1)
+                    # if i == 0:
+                    #     fig.update_yaxes(title_text=f"<b>V{j+1}</b>",row=j, col=i+1)
+                    # if j == num_components - 1:
+                    #     fig.update_xaxes(title_text=f"<b>V{i+1}</b>",row=j, col=i+1)
 
             fig.update_layout(showlegend=False)
             update_figure_small(fig, True)  
@@ -387,13 +403,17 @@ class SmoothnessEvaluator(Callback):
                         line=dict(color='rgba(0, 0, 0, 0.5)', width=3), marker=dict(size=2, color=np.arange(traj.shape[0]) * dt, colorscale='deep')
                     ))
             
+            # fig.update_layout(scene=dict(aspectratio=dict(x=1, y=1, z=1),
+            #                 xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+            #                 yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+            #                 zaxis=dict(title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)))
             fig.update_layout(scene=dict(aspectratio=dict(x=1, y=1, z=1),
-                            xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                            yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
-                            zaxis=dict(title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)))
+                            xaxis=dict(title='', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                            yaxis=dict(title='', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                            zaxis=dict(title='', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)))
             
 
-            update_figure_3d(fig)
+            update_figure_3d(fig, True)
 
         else:
 
@@ -404,9 +424,13 @@ class SmoothnessEvaluator(Callback):
             fig.add_trace(go.Scatter(x=traj[:,0], y=traj[:,1], mode='lines+markers',
                         line=dict(color='rgba(0, 0, 0, 0.5)', width=7), marker=dict(size=30, symbol="arrow", angleref="previous", color=np.arange(traj.shape[0]) * dt, colorscale='deep')))
             
+            # fig.update_layout(width=700, height=660,
+            #             xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+            #             yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+            #             showlegend=False)
             fig.update_layout(width=700, height=660,
-                        xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                        yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                        xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                        yaxis=dict(range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
                         showlegend=False)
             update_figure(fig, True)
                 
@@ -414,14 +438,19 @@ class SmoothnessEvaluator(Callback):
         data_max_full = data_full_max.max()
 
         fig.write_image(os.path.join(save_path, f'nsv_trajectories/{vid_idx}.png'), scale=4)
+        traj_img = Image.open(os.path.join(save_path, f'nsv_trajectories/{vid_idx}.png'))
 
         fig = go.Figure()
         for i in range(num_components):
-            fig.add_trace(go.Scatter(x=np.linspace(0,dt*(steps-1), steps), y=traj[:,i], mode='lines', line=dict(color=cols[i], width=7), name=f"<b>V{i+1}</b>"))
-        fig.update_layout(xaxis=dict(title='<b>Time (s)</b>', range=[0,dt*(steps+3)], nticks=3),
-                            yaxis=dict(title='<b>V</b>', range=[-1.1*data_max_full, 1.1*data_max_full], tickmode='linear', tick0 = int(10*data_max_full)/10, dtick=int(10*data_max_full)/10))
+            fig.add_trace(go.Scatter(x=np.linspace(0,dt*(steps-1), steps), y=traj[:,i], mode='lines', line=dict(color=cols[i], width=7), name="")) #f"<b>V{i+1}</b>"))
+        # fig.update_layout(xaxis=dict(title='<b>Time (s)</b>', range=[0,dt*(steps+3)], nticks=3),
+        #                     yaxis=dict(title='<b>V</b>', range=[-1.1*data_max_full, 1.1*data_max_full], tickmode='linear', tick0 = int(10*data_max_full)/10, dtick=int(10*data_max_full)/10))
+        fig.update_layout(xaxis=dict(range=[0,dt*(steps+3)], nticks=3),
+                            yaxis=dict(range=[-1.1*data_max_full, 1.1*data_max_full], tickmode='linear', tick0 = int(10*data_max_full)/10, dtick=int(10*data_max_full)/10))
+        
         update_figure(fig, True)
         fig.write_image(os.path.join(save_path, 'time_series/'+str(vid_idx)+'.png'), scale=4)
+        time_series_img = Image.open(os.path.join(save_path, 'time_series/'+str(vid_idx)+'.png'))
 
         t = np.arange(traj.shape[0]) * dt
         cs = CubicSpline(t, traj)
@@ -429,12 +458,19 @@ class SmoothnessEvaluator(Callback):
         
         fig = go.Figure()
         for i in range(num_components):
-            fig.add_trace(go.Scatter(x=np.linspace(0,dt*(steps-2), steps-1), y=d_traj[:,i], mode='lines', line=dict(color=cols[i], width=7), name=f"<b>dV{i+1}/dt</b>"))
-        fig.update_layout(xaxis=dict(title='<b>Time (s)</b>', range=[0,dt*(steps+3)], nticks=3),
-                            yaxis=dict(title='<b>dV/dt</b>', nticks=5))
+            fig.add_trace(go.Scatter(x=np.linspace(0,dt*(steps-2), steps-1), y=d_traj[:,i], mode='lines', line=dict(color=cols[i], width=7), name="" )) #f"<b>dV{i+1}/dt</b>"))
+        # fig.update_layout(xaxis=dict(title='<b>Time (s)</b>', range=[0,dt*(steps+3)], nticks=3),
+        #                     yaxis=dict(title='<b>dV/dt</b>', nticks=5))
+        fig.update_layout(xaxis=dict(range=[0,dt*(steps+3)], nticks=3),
+                            yaxis=dict(nticks=5))
         update_figure(fig, True)
         fig.write_image(os.path.join(save_path, 'first_order_derivatives/'+str(vid_idx)+'.png'), scale=4)
+        derivative_img = Image.open(os.path.join(save_path, 'first_order_derivatives/'+str(vid_idx)+'.png'))
 
+        
+        visualization = [wandb.Image(traj_img, caption=f'Trajectory {vid_idx}'), wandb.Image(time_series_img, caption=f'Time Series {vid_idx}'), wandb.Image(derivative_img, caption=f'Derivative {vid_idx}')]
+
+        return visualization
 
     def visualize_nsv_embedding(self, phys_all, ids_test, nsv_test, task_log_dir, data_max, data_min):
         embedding_save_path = os.path.join(task_log_dir, 'nsv_embedding')
@@ -445,9 +481,14 @@ class SmoothnessEvaluator(Callback):
         nsv_test_arr = np.array(nsv_test)
         num_components = nsv_test_arr.shape[1]
 
+        plots = []
         print('Visualizing NSV Embeddings')
         for p_var in tqdm(phys_vars_list):
-            self.visualize_nsv(nsv_test_arr, phys_test[p_var], p_var, embedding_save_path, data_max, data_min)
+            plot = self.visualize_nsv(nsv_test_arr, phys_test[p_var], p_var, embedding_save_path, data_max, data_min)
+
+            plots.append((p_var, plot))
+        
+        return plots
 
 
     def visualize_nsv(self, data, v, v_name, save_path, data_max, data_min):
@@ -478,18 +519,32 @@ class SmoothnessEvaluator(Callback):
         else:
             fig = go.Figure(data=go.Scatter(x=data[:, 0], y=data[:, 1], mode='markers',marker=dict(size=8, color=v, colorbar=dict(title='',tickprefix="<b>",ticksuffix ="</b>", nticks=6),colorscale=colorscale)))
             
-            fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                        yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+            # fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+            #             yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+            #             showlegend=False)
+            fig.update_layout(xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                        yaxis=dict(scaleanchor="x", scaleratio=1, range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
                         showlegend=False)
             update_figure(fig, True)
         fig.write_image(os.path.join(save_path, v_name+'.png'), scale=4)
 
+        img = Image.open(os.path.join(save_path, v_name+'.png'))
+        return img
 
-    def find_filtered_trajectories(self, trajectories, percentile=99):
+    def find_filtered_trajectories(self, trajectories, cyclic, percentile=99):
 
         finite_difference = []
         for vid_idx in trajectories.keys():
             trajectories[vid_idx] = np.array(trajectories[vid_idx])
+
+            if cyclic:
+                for i in range(1,trajectories[vid_idx].shape[0]):
+                    for j in range(trajectories[vid_idx].shape[1]):
+                        if trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] > 1:
+                            trajectories[vid_idx][i:,j] -= 2
+                        elif trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] < -1:
+                            trajectories[vid_idx][i:,j] += 2
+
             finite_difference.extend(trajectories[vid_idx][1:,:]-trajectories[vid_idx][:-1,:])
 
         finite_difference = np.array(finite_difference)
@@ -555,20 +610,49 @@ class SmoothnessEvaluator(Callback):
         nsv_test = np.array(pl_module.all_refine_latents)
         
         trajectories_test = self.trajectories_from_data_ids(ids_test, nsv_test)
-        invalid_trajectories = self.find_filtered_trajectories(trajectories_test)
+        invalid_trajectories = self.find_filtered_trajectories(trajectories_test, 'cyclic' in pl_module.smooth_loss_type)
 
         data_max = np.max(nsv_test, axis=0)
         data_min = np.min(nsv_test, axis=0)
     
-        self.eval_smooth(trajectories_test, task_log_dir, invalid_trajectories, pl_module.dt, data_min, data_max)
+        self.looped_traj = []
+        visualizations, metrics = self.eval_smooth(trajectories_test, task_log_dir, invalid_trajectories, pl_module.dt, data_min, data_max)
+
+        table = wandb.Table(data=visualizations, columns=["Video IDX","Trajectories", "Time Series", "Derivatives"])
+        trainer.logger.experiment.log({"Trajectory Visualizations":table, "trainer/global_step": trainer.global_step})
+        table = wandb.Table(data=metrics, columns=["Video IDX", "Mean Variation", "Mean 2nd Order Variation", "Max Variation", "Max 2nd Order Variation", "Deviation", "Filtered"])
+        trainer.logger.experiment.log({"Smoothness Metrics":table, "trainer/global_step": trainer.global_step})
+
+        trainer.logger.experiment.log({'Mean Variation':metrics[:,1].mean()})
+        trainer.logger.experiment.log({'Mean 2nd Order Variation':metrics[:,2].mean()})
+        trainer.logger.experiment.log({'Max Variation':metrics[:,3].max()})
+        trainer.logger.experiment.log({'Max 2nd Order Variation':metrics[:,4].max()})
+        trainer.logger.experiment.log({'Mean Deviation':metrics[:,5].mean()})
+        trainer.logger.experiment.log({'Filtered Ratio': metrics[:,6].sum()/len(list(trajectories_test.keys()))})
+
+        print("Number of Looped Traj: ", len(self.looped_traj))
+
+        filtered_looped_traj = []
+        for t in self.looped_traj:
+            if t not in invalid_trajectories:
+                filtered_looped_traj.append(t)
+        print("Number of Looped Traj (Filtered): ", len(filtered_looped_traj))
+
+        trainer.logger.experiment.log({'Looped Trajectories': len(self.looped_traj)})
+        trainer.logger.experiment.log({'Looped Trajectories (Post Filter)': len(filtered_looped_traj)})
 
         data_file_path = os.path.join('./data', pl_module.model.dataset)
         physics_variable_path = os.path.join(data_file_path, 'phys_vars.npy')
     
         phys_all = np.load(physics_variable_path, allow_pickle=True).item()
 
-        self.visualize_nsv_embedding(phys_all, ids_test, nsv_test, task_log_dir, data_max, data_min)
+        plots = self.visualize_nsv_embedding(phys_all, ids_test, nsv_test, task_log_dir, data_max, data_min)
 
+        images = []
+        for cap, img in plots[3::4]:
+            images.append(wandb.Image(img, caption=cap))
+        
+        trainer.logger.experiment.log({"Embeddings":images, "trainer/global_step": trainer.global_step})
 
 
 class RegressEvaluator(Callback):
@@ -583,14 +667,20 @@ class RegressEvaluator(Callback):
         steps = pred_traj.shape[0]
 
         data_full_max = np.stack([np.abs(data_min), data_max], axis=0).max(axis=0)
+        data_full_max = np.expand_dims(data_full_max, axis=0)
+        data_full_max = np.max(np.concatenate([data_full_max, np.abs(target_traj), np.abs(pred_traj)], axis=0), axis=0)
+
         data_max_full = data_full_max.max()
 
         fig = go.Figure()
         for i in range(num_components):
-            fig.add_trace(go.Scatter(x=np.linspace(0,dt*steps, steps), y=pred_traj[:,i], line=dict(color=cols[i], width=7), name=f"<b>V{i+1}</b>"))
-            fig.add_trace(go.Scatter(x=np.linspace(0,dt*steps, steps), y=target_traj[:,i], line=dict(color=cols[i], width=7, dash='dot'), name=f"V{i+1} ground truth"))
-        fig.update_layout(xaxis=dict(title='<b>Time (s)</b>', range=[0,dt*(steps+3)], nticks=3),
-                            yaxis=dict(title='<b>V</b>', range=[-1.1*data_max_full, 1.1*data_max_full], tickmode='linear', tick0 = int(10*data_max_full)/10, dtick=int(10*data_max_full)/10))
+            fig.add_trace(go.Scatter(x=np.linspace(0,dt*steps, steps), y=pred_traj[:,i], line=dict(color=cols[i], width=7), name="")) #f"<b>V{i+1}</b>"))
+            fig.add_trace(go.Scatter(x=np.linspace(0,dt*steps, steps), y=target_traj[:,i], line=dict(color=cols[i], width=7, dash='dot'), name="")) #f"V{i+1} ground truth"))
+        # fig.update_layout(xaxis=dict(title='<b>Time (s)</b>', range=[0,dt*(steps+3)], nticks=3),
+        #                     yaxis=dict(title='<b>V</b>', range=[-1.1*data_max_full, 1.1*data_max_full], tickmode='linear', tick0 = int(10*data_max_full)/10, dtick=int(10*data_max_full)/10))
+        fig.update_layout(xaxis=dict(range=[0,dt*(steps+3)], nticks=3),
+                            yaxis=dict(range=[-1.1*data_max_full, 1.1*data_max_full], tickmode='linear', tick0 = int(10*data_max_full)/10, dtick=int(10*data_max_full)/10))
+        
         update_figure(fig, True)
         fig.write_image(os.path.join(save_path, 'time_series/'+str(traj_id)+'.png'), scale=4)
 
@@ -599,43 +689,50 @@ class RegressEvaluator(Callback):
             x_max = np.max(np.abs(target_traj), axis=0)
             for i in range(num_components-1):
                 for j in range(i+1, num_components):
-                    fig.add_trace(go.Scatter(x=pred_traj[:,i], y=pred_traj[:,j], name='<b>prediction</b>',
+                    fig.add_trace(go.Scatter(x=pred_traj[:,i], y=pred_traj[:,j], name="", #'<b>prediction</b>',
                                     mode='lines', line=dict(width=1, color=cols[0])), row=j, col=i+1)
-                    fig.add_trace(go.Scatter(x=target_traj[:,i], y=target_traj[:,j], name='<b>ground truth</b>',
+                    fig.add_trace(go.Scatter(x=target_traj[:,i], y=target_traj[:,j], name="", #'<b>ground truth</b>',
                                     mode='lines', line=dict(width=0.75, color=cols[1], dash='dot')), row=j, col=i+1)
-                    fig.update_xaxes(row=j, col=i+1, range=[-1.1*data_full_max[i], 1.1*data_full_max[i]], tickmode='linear', tick0 = int(10*data_full_max[i])/10, dtick=int(10*data_full_max[i])/10)
-                    fig.update_yaxes(row=j, col=i+1, range=[-1.1*data_full_max[j], 1.1*data_full_max[j]], tickmode='linear', tick0 = int(10*data_full_max[j])/10, dtick=int(10*data_full_max[j])/10)
+                    fig.update_xaxes(row=j, col=i+1, range=[-1.1*data_full_max[i], 1.1*data_full_max[i]], tickmode='linear', tick0 = int(10*data_full_max[i])/10, dtick=int(10*data_full_max[i])/10, showticklabels=(j==num_components-1))
+                    fig.update_yaxes(row=j, col=i+1, range=[-1.1*data_full_max[j], 1.1*data_full_max[j]], tickmode='linear', tick0 = int(10*data_full_max[j])/10, dtick=int(10*data_full_max[j])/10, showticklabels=(i==0))
 
+                    # if i == 0:
+                    #     fig.update_yaxes(title_text=f"<b>V{j+1}</b>",row=j, col=i+1)
+                    # if j == num_components - 1:
+                    #     fig.update_xaxes(title_text=f"<b>V{i+1}</b>",row=j, col=i+1)
 
-                    if i == 0:
-                        fig.update_yaxes(title_text=f"<b>V{j+1}</b>",row=j, col=i+1)
-                    if j == num_components - 1:
-                        fig.update_xaxes(title_text=f"<b>V{i+1}</b>",row=j, col=i+1)
-
-            update_figure_small(fig)  
+            update_figure_small(fig, True)  
         elif num_components == 3:
             fig = go.Figure()
             fig.add_trace(go.Scatter3d(x=pred_traj[:,0], y=pred_traj[:,1], z=pred_traj[:,2], mode='lines', name='<b>prediction</b>', line=dict(width=4, color=cols[0])))
             fig.add_trace(go.Scatter3d(x=target_traj[:,0], y=target_traj[:,1], z=target_traj[:,2], mode='lines', name='<b>ground truth</b>', line=dict(width=3, color=cols[1], dash='dot')))
+            # fig.update_layout(scene=dict(aspectratio=dict(x=1, y=1, z=1),
+            #                 xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+            #                 yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+            #                 zaxis=dict(title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)))
             fig.update_layout(scene=dict(aspectratio=dict(x=1, y=1, z=1),
-                            xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                            yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
-                            zaxis=dict(title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)))
-            update_figure_3d(fig)
+                            xaxis=dict(title='', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                            yaxis=dict(title='', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                            zaxis=dict(title='', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)))
+            
+            update_figure_3d(fig, True)
         else:
             fig = go.Figure()
             x_max = np.max(np.abs(target_traj), axis=0)
-            fig.add_trace(go.Scatter(x=pred_traj[:,-2], y=pred_traj[:,-1], name='<b>prediction</b>',
+            fig.add_trace(go.Scatter(x=pred_traj[:,-2], y=pred_traj[:,-1], name="", #'<b>prediction</b>',
                                     mode='lines', line=dict(width=7, color=cols[0])))
-            fig.add_trace(go.Scatter(x=target_traj[:,-2], y=target_traj[:,-1], name='<b>ground truth</b>',
+            fig.add_trace(go.Scatter(x=target_traj[:,-2], y=target_traj[:,-1], name="", #'<b>ground truth</b>',
                                     mode='lines', line=dict(width=7, color=cols[0], dash='dot')))
-            fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                        yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10))
-            update_figure(fig)
+            # fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+            #             yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10))
+            fig.update_layout(xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                        yaxis=dict(scaleanchor="x", scaleratio=1, range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10))
+            
+            update_figure(fig, True)
     
         fig.write_image(os.path.join(save_path, 'trajectories/'+str(traj_id)+'.png'), scale=4)
 
-    def eval_pred(self, data, pred, target, ids, pl_module, extra_steps=0):
+    def eval_pred(self, data, pred, target, ids, pl_module):
 
         num_components = pl_module.nsv_model.nsv_dim
         save_path = os.path.join(self.task_log_dir, 'mlp_predictions')
@@ -643,7 +740,7 @@ class RegressEvaluator(Callback):
 
         full_seq_ids = []
         for i in range(len(ids)):
-            if ids[i][1] == extra_steps:
+            if ids[i][1] == 0:
                 full_seq_ids.append(i)
         
         data_max = np.max(data, axis=0)
@@ -841,6 +938,12 @@ class RegressEvaluator(Callback):
 
     def visualize(self, save_path, pred, target, id, nsv_model):
 
+        pred = torch.from_numpy(pred).cuda()
+        target = torch.from_numpy(target).cuda()
+
+        if 'cyclic' in nsv_model.name:
+            pred = torch.fmod((pred + torch.sign(pred) * torch.where(torch.abs(pred) > 1, 1.0, 0.0)), 2.0) - torch.sign(pred) * torch.where(torch.abs(pred) > 1, 1.0, 0.0)
+            target = torch.fmod((target + torch.sign(target) * torch.where(torch.abs(target) > 1, 1.0, 0.0)), 2.0) - torch.sign(target) * torch.where(torch.abs(target) > 1, 1.0, 0.0)
 
         def get_data(filepath):
             data = Image.open(filepath)
@@ -852,12 +955,12 @@ class RegressEvaluator(Callback):
 
         if 'smooth' in nsv_model.name:
             nsv_model.eval()
-            output, _ = nsv_model.decoder.nsv_decoder(torch.tensor(target).float().cuda())
+            output, _ = nsv_model.decoder.nsv_decoder(target)
             nsv_model.eval()
-            pred_output, _ = nsv_model.decoder.nsv_decoder(torch.tensor(pred).float().cuda())
+            pred_output, _ = nsv_model.decoder.nsv_decoder(pred)
         else:
-            output, _ = nsv_model.decoder(torch.from_numpy(target).cuda())
-            pred_output, _ = nsv_model.decoder(torch.from_numpy(pred).cuda())
+            output, _ = nsv_model.decoder(target)
+            pred_output, _ = nsv_model.decoder(pred)
 
         mkpath(os.path.join(save_path, 'full', str(id)))
         mkpath(os.path.join(save_path, 'gt', str(id)))
@@ -917,8 +1020,11 @@ class RegressEvaluator(Callback):
                 fig.add_trace(go.Scatter(x=data[:,0], y=data[:,1], mode='markers',
                                         marker=dict(size=8, color=output[:,i], colorbar=dict(title='',tickprefix="<b>",ticksuffix ="</b>", nticks=6),
                                         colorscale=colorscale)))
-                fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                        yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                # fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                #         yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                #         showlegend=False)
+                fig.update_layout(xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                        yaxis=dict(scaleanchor="x", scaleratio=1, range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
                         showlegend=False)
                 update_figure(fig,True)       
             else:
@@ -929,7 +1035,7 @@ class RegressEvaluator(Callback):
                     for k in range(j+1, num_components):
                         fig.add_trace(go.Scatter(x=data[:,j], y=data[:,k], mode='markers',
                                     marker=dict(size=4, color=output[:,i], colorbar=dict(title=''),colorscale=colorscale)), row=k, col=j+1)
-                        ig.update_xaxes(row=k, col=j+1, range=[-1.1*data_full_max[j], 1.1*data_full_max[j]], tickmode='linear', tick0 = int(10*data_full_max[j])/10, dtick=int(10*data_full_max[j])/10)
+                        fig.update_xaxes(row=k, col=j+1, range=[-1.1*data_full_max[j], 1.1*data_full_max[j]], tickmode='linear', tick0 = int(10*data_full_max[j])/10, dtick=int(10*data_full_max[j])/10)
                         fig.update_yaxes(row=k, col=j+1, range=[-1.1*data_full_max[k], 1.1*data_full_max[k]], tickmode='linear', tick0 = int(10*data_full_max[k])/10, dtick=int(10*data_full_max[k])/10)
 
                         if j == 0:
@@ -954,8 +1060,11 @@ class RegressEvaluator(Callback):
                 fig.add_trace(go.Scatter(x=data[:,0], y=data[:,1], mode='markers',
                                         marker=dict(size=8, color=target_fd[:,i], colorbar=dict(title='',tickprefix="<b>",ticksuffix ="</b>", nticks=6),
                                         colorscale=colorscale)))
-                fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                        yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                # fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                #         yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                #         showlegend=False)
+                fig.update_layout(xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                        yaxis=dict(scaleanchor="x", scaleratio=1, range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
                         showlegend=False)
                 update_figure(fig,True)
             else:
@@ -1001,9 +1110,13 @@ class RegressEvaluator(Callback):
             scale = .03 if pl_module.dataset == 'single_pendulum' else .02
             fig = ff.create_quiver(g[:,0], g[:,1], grid_output[:,0], grid_output[:,1], scale=scale, line=dict(color='black'), line_width=3)
 
+            # fig.update_layout(width=700, height=660,
+            #                     xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+            #                     yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+            #                     showlegend=False)
             fig.update_layout(width=700, height=660,
-                                xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                                yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                                xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                                yaxis=dict(range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
                                 showlegend=False)
             
             update_figure(fig,True)
@@ -1043,9 +1156,13 @@ class RegressEvaluator(Callback):
 
             fig = ff.create_quiver(g[:,0], g[:,1], grid_output_v1v2[:,0], grid_output_v1v2[:,1], scale=.03, line=dict(color='black'), line_width=3)
 
+            # fig.update_layout(width=700, height=660,
+            #                     xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = -int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+            #                     yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = -int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+            #                     showlegend=False)
             fig.update_layout(width=700, height=660,
-                                xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = -int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                                yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = -int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                                xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = -int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                                yaxis=dict(range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = -int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
                                 showlegend=False)
             update_figure(fig, True)
             fig.write_image(os.path.join(save_path, 'gradient_field_v1v2.png'), scale=4)
@@ -1062,9 +1179,13 @@ class RegressEvaluator(Callback):
             fig = ff.create_quiver(g[:,0], g[:,1], grid_output_v3v4[:,2], grid_output_v1v2[:,3], scale=.03, line=dict(color='black'), line_width=3)
 
             update_figure(fig, True)
+            # fig.update_layout(width=700, height=660,
+            #                     xaxis=dict(title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10),
+            #                     yaxis=dict(title='<b>V4</b>', range=[-1.1*data_full_max[3], 1.1*data_full_max[3]], tickmode='linear', tick0 = int(10*data_full_max[3])/10, dtick=int(10*data_full_max[3])/10),
+            #                     showlegend=False)
             fig.update_layout(width=700, height=660,
-                                xaxis=dict(title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10),
-                                yaxis=dict(title='<b>V4</b>', range=[-1.1*data_full_max[3], 1.1*data_full_max[3]], tickmode='linear', tick0 = int(10*data_full_max[3])/10, dtick=int(10*data_full_max[3])/10),
+                                xaxis=dict(range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10),
+                                yaxis=dict(range=[-1.1*data_full_max[3], 1.1*data_full_max[3]], tickmode='linear', tick0 = int(10*data_full_max[3])/10, dtick=int(10*data_full_max[3])/10),
                                 showlegend=False)
             fig.write_image(os.path.join(save_path, 'gradient_field_v3v4.png'), scale=4)
         
@@ -1097,9 +1218,13 @@ class RegressEvaluator(Callback):
             fig = ff.create_quiver(g[:,0], g[:,1], grid_output_v1v2[:,0], grid_output_v1v2[:,1], scale=.1, line=dict(color='black'), line_width=3)
 
             update_figure(fig, True)
+            # fig.update_layout(width=700, height=660,
+            #                     xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+            #                     yaxis=dict( title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+            #                     showlegend=False)
             fig.update_layout(width=700, height=660,
-                                xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                                yaxis=dict( title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                                xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                                yaxis=dict(range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
                                 showlegend=False)
 
             fig.write_image(os.path.join(save_path, 'gradient_field_v1v2.png'), scale=4)
@@ -1116,9 +1241,13 @@ class RegressEvaluator(Callback):
             fig = ff.create_quiver(g[:,0], g[:,1], grid_output_v2v3[:,1], grid_output_v2v3[:,2], scale=.1, line=dict(color='black'), line_width=3)
 
             update_figure(fig,True)
+            # fig.update_layout(width=700, height=660,
+            #                     xaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+            #                     yaxis=dict( title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10),
+            #                     showlegend=False)
             fig.update_layout(width=700, height=660,
-                                xaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
-                                yaxis=dict( title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10),
+                                xaxis=dict(range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                                yaxis=dict( range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10),
                                 showlegend=False)
 
             fig.write_image(os.path.join(save_path, 'gradient_field_v2v3.png'), scale=4)
@@ -1135,9 +1264,13 @@ class RegressEvaluator(Callback):
             fig = ff.create_quiver(g[:,0], g[:,1], grid_output_v1v3[:,0], grid_output_v1v3[:,2], scale=.1, line=dict(color='black'), line_width=3)
 
             update_figure(fig, True)
+            # fig.update_layout(width=700, height=660,
+            #                     xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+            #                     yaxis=dict( title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10),
+            #                     showlegend=False)
             fig.update_layout(width=700, height=660,
-                                xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                                yaxis=dict( title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10),
+                                xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                                yaxis=dict(range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10),
                                 showlegend=False)
             fig.write_image(os.path.join(save_path, 'gradient_field_v1v3.png'), scale=4)
 
@@ -1154,17 +1287,37 @@ class RegressEvaluator(Callback):
         return data_trajectories, output_trajectories
 
 
-    def find_equilibrium_mlp(self, ids, data, pl_module, output, num_guesses=10, num_samples=10, num_steps=60, epsilon_percentages=[], delta_percentages=[]):
+    def find_equilibrium_mlp(self, ids, data, pl_module, output, num_guesses=10, num_samples=10, num_directions=10, num_steps=300, epsilon_percentages=[], delta_percentages=[]):
+
+        def make_rand_vector(dims):
+            vec = [random.gauss(0, 1) for i in range(dims)]
+            mag = sum(x**2 for x in vec) ** .5
+            return [x/mag for x in vec]
+
 
         save_path = os.path.join(self.task_log_dir, f'mlp_equilibrium')
         mkdir(save_path)
 
         def mlp_f(y): return pl_module.model(torch.tensor(y.astype(np.float32)).unsqueeze(0).cuda()).cpu().detach().numpy().squeeze()
 
+        data_max = np.max(data, axis=0)
+        data_min = np.min(data, axis=0)
+        nsv_range = data_max - data_min
+
+        # Candidations from Test Data
         indices = np.argsort(np.linalg.norm(output, axis=1))
         guesses = data[indices[:num_guesses]]
-        
-        # Candidate per trajectory
+
+        # Extra Candidates from grid
+        if pl_module.dataset == 'double_pendulum':
+            g = np.mgrid[0:1:10j,0:1:10j,0:1:10j,0:1:10j]
+            g =  data_min + nsv_range * np.transpose(g, (1,2,3,4,0)).reshape(-1,4)
+            g_tensor = torch.tensor(g.astype(np.float32)).to(pl_module.device)
+            g_output = pl_module.model(g_tensor).cpu().detach().numpy()
+            g_indices = np.argsort(np.linalg.norm(g_output, axis=1))
+            g_guesses = g[g_indices[:num_guesses]]
+            guesses = np.concatenate([guesses, g_guesses], axis=0)
+        # Candidates per trajectory
         if pl_module.dataset == 'cylindrical_flow':
 
             data_trajectories, output_trajectories = self.trajectories_from_data_ids(ids, data, output)
@@ -1179,7 +1332,7 @@ class RegressEvaluator(Callback):
 
         data_max = np.max(data, axis=0)
         data_min = np.min(data, axis=0)
-        nsv_range = data.max() - data.min()
+        nsv_range = np.sqrt(np.sum((data_max - data_min)**2))
 
         roots = []
         eigenvals = []
@@ -1227,10 +1380,12 @@ class RegressEvaluator(Callback):
                 delta = .01 * p * nsv_range
                 distance.append([])
                 initial_distance.append([])
-                for i in range(num_samples):
-                    max_dist, initial_dist = self.mlp_pred_equilibrium_sample(i, pl_module, guess_idx, torch.tensor(mlp_root.astype(np.float32)).reshape((1,-1)).cuda(), steps=num_steps, delta=delta)
-                    distance[-1].append(max_dist)
-                    initial_distance[-1].append(initial_dist)
+                for i in range(num_directions):
+                    rand_dir = torch.tensor(make_rand_vector(mlp_root.shape[0])).float().cuda()
+                    for j in range(1, num_samples+1):
+                        max_dist, initial_dist = self.mlp_pred_equilibrium_sample(i, pl_module, guess_idx, torch.tensor(mlp_root.astype(np.float32)).reshape((1,-1)).cuda(), rand_dir, data_max, data_min, steps=num_steps, delta=delta * (j/num_samples))
+                        distance[-1].append(max_dist)
+                        initial_distance[-1].append(initial_dist)
 
             mkdir(os.path.join(save_path, f'{guess_idx}'))
             save_image(image.cpu(), os.path.join(save_path, f'{guess_idx}.png'), nrow=1)
@@ -1258,7 +1413,7 @@ class RegressEvaluator(Callback):
                 os.system(f'cp \"{save_path}/{guess_idx}/0.png\" \"{save_path}/{guess_idx}/m_0.png\"')
                 os.system(f'cp \"{save_path}/{guess_idx}/1.png\" \"{save_path}/{guess_idx}/m_1.png\"')
         
-
+        print("Analyzing Stabilities")
         delta_per_epsilon, stabilities = self.eq_stability_analysis(initial_distances, distances, nsv_range, epsilon_percentages)
         eq_points = {"guesses": guesses,
                             "roots": roots,
@@ -1280,15 +1435,14 @@ class RegressEvaluator(Callback):
         delta_per_epsilon = []
         stabilities = []
 
-        print("Analyzing Stabilities")
         for i_d, max_d in tqdm(zip(initial_distances, distances)):
 
             initial_d = np.array(i_d).flatten()
             maximum_d = np.array(max_d).flatten()
 
             i_d_2_max_d = {i: d for i, d in zip(initial_d, maximum_d)}
-            sorted_i_d_2_max_d = sorted(i_d_2_max_d, key = i_d_2_max_d.get)
-
+            max_d_sorted_i_d_2_max_d = sorted(i_d_2_max_d, key = i_d_2_max_d.get)
+            i_d_sorted_i_d_2_max_d = list(dict(sorted(i_d_2_max_d.items(), key=lambda x: (x[0], x[1]))).keys())
             result = []
 
             for p in epsilon_percentages:
@@ -1296,13 +1450,21 @@ class RegressEvaluator(Callback):
                 
                 result_p = None
 
-                for i in sorted_i_d_2_max_d:
+                for i in max_d_sorted_i_d_2_max_d:
 
                     d = i_d_2_max_d[i]
                     d_percentage = "{:.2f}".format(100 * d/nsv_range)
 
-                    if d  < e:
-                        result_p = f'epsilon_{p}%_{e}_delta_{d_percentage}%_{d}'
+                    # Maximum Distance Less than Epsilon
+                    if d < e:
+                        # Check all trajectories that start closer
+                        all_less = True
+                        for closer_i_d in i_d_sorted_i_d_2_max_d[:i_d_sorted_i_d_2_max_d.index(i)]:
+                            if i_d_2_max_d[closer_i_d] > e or i_d_2_max_d[closer_i_d] > d:
+                                all_less = False
+                        # All trajectories less than or equal to delta satisfy epsilon condition
+                        if all_less:
+                            result_p = f'epsilon_{p}%_{e}_delta_{d_percentage}%_{d}'
                     else:
                         break
                 
@@ -1313,28 +1475,28 @@ class RegressEvaluator(Callback):
         
         return delta_per_epsilon, stabilities
     
-    def mlp_pred_equilibrium_sample(self, trial_num, pl_module, root_idx, begin_nsv, steps=60, delta=0.01):
+    def mlp_pred_equilibrium_sample(self, trial_num, pl_module, root_idx, begin_nsv, rand_dir, data_max, data_min, steps=60, delta=0.01):
 
-        nsv_sample = torch.normal(mean=begin_nsv, std=delta)
-
+        # Initial point on hypersphere with radius delta
+        nsv_sample = begin_nsv + rand_dir * delta
         initial_dist = torch.sqrt(torch.sum(((nsv_sample - begin_nsv)**2)))
 
-        while initial_dist >= delta:
-
-            nsv_sample = torch.normal(mean=begin_nsv, std=delta)
-
-            initial_dist = torch.sqrt(torch.sum(((nsv_sample - begin_nsv)**2)))
-
         t_span = (pl_module.dt * torch.arange(steps+1)).float()
-        
+       
         _, pred = pl_module.ode(nsv_sample.cuda(), t_span)
 
         pred = pred.permute(1, 0, 2).squeeze()
 
         pred_arr = pred.clone().detach().cpu().numpy()
+
+        # If trajectory leaves bounds, max distance is infinity
+        for step in range(pred_arr.shape[0]):
+            if np.any(pred_arr[step,:] > data_max) or np.any(pred_arr[step,:] < data_min):
+                return np.inf, initial_dist.cpu().detach().numpy()
         
         pred_distance = torch.sqrt(torch.sum((pred - begin_nsv)**2, dim=1))
 
+        # Trajectory remained within bounds
         return pred_distance.max().cpu().detach().numpy(), initial_dist.cpu().detach().numpy()
 
     def rollout_equilibrium(self, pl_module, root_idx, begin_data, steps=60, hybrid_step=3):
@@ -1392,5 +1554,5 @@ class RegressEvaluator(Callback):
         if pl_module.test_mode == "eq_stability":
             return
         
-        self.eval_pred(data, pred, target, ids, pl_module, extra_steps=pl_module.extra_steps)
+        self.eval_pred(data, pred, target, ids, pl_module)
         self.visualize_mlp(data, pl_module, output, target)

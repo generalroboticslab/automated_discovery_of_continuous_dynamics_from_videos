@@ -11,6 +11,7 @@ import scipy.io as sio
 from torch.utils.data import TensorDataset, Dataset, DataLoader, random_split
 from torchvision import datasets, transforms
 
+import copy
 import pytorch_lightning as pl
 from scipy.interpolate import CubicSpline
 from tqdm import tqdm
@@ -32,7 +33,6 @@ class RegressDataModule(pl.LightningDataModule):
                  seed: int = 1,
                  shuffle: bool=True,
                  pred_length: int=56,
-                 extra_steps: int=0,
                  filter_data: bool=False,
                  percentile: int=90,
                  data_annealing_list: list=[],
@@ -54,7 +54,6 @@ class RegressDataModule(pl.LightningDataModule):
         self.seed = seed
         self.shuffle = shuffle
         self.pred_length = pred_length
-        self.extra_steps = extra_steps
         self.filter_data = filter_data
         self.percentile = percentile
 
@@ -68,7 +67,6 @@ class RegressDataModule(pl.LightningDataModule):
                                                     nsv_model_name=self.nsv_model_name,
                                                     decay_rate=self.decay_rate,
                                                     pred_length=self.pred_length,
-                                                    extra_steps=self.extra_steps,
                                                     filter_data=self.filter_data,
                                                     percentile=self.percentile)
         self.val_dataset = RegressDataset(data_filepath=self.data_path,
@@ -78,7 +76,6 @@ class RegressDataModule(pl.LightningDataModule):
                                                     nsv_model_name=self.nsv_model_name,
                                                     decay_rate=self.decay_rate,
                                                     pred_length=self.pred_length,
-                                                    extra_steps=self.extra_steps,
                                                     filter_data=self.filter_data,
                                                     percentile=self.percentile)
         self.test_dataset = RegressDataset(data_filepath=self.data_path,
@@ -88,7 +85,6 @@ class RegressDataModule(pl.LightningDataModule):
                                                     nsv_model_name=self.nsv_model_name,
                                                     decay_rate=self.decay_rate,
                                                     pred_length=self.pred_length,
-                                                    extra_steps=self.extra_steps,
                                                     filter_data=self.filter_data,
                                                     percentile=self.percentile)
 
@@ -115,7 +111,7 @@ class RegressDataModule(pl.LightningDataModule):
 
 
 class RegressDataset(Dataset):
-    def __init__(self, data_filepath, flag, seed, object_name, nsv_model_name, decay_rate, pred_length, extra_steps, filter_data=False, percentile=99, **kwargs):
+    def __init__(self, data_filepath, flag, seed, object_name, nsv_model_name, decay_rate, pred_length, filter_data=False, percentile=99, **kwargs):
         super().__init__()
         self.seed = seed
         self.flag = flag
@@ -124,50 +120,66 @@ class RegressDataset(Dataset):
         self.nsv_model_name = nsv_model_name
         self.decay_rate = decay_rate
         self.pred_length = pred_length
-        self.extra_steps = extra_steps
         self.filter_data = filter_data
         self.percentile = percentile
-        self.states = self.get_states()
 
-        if self.filter_data:
-            print("Filtering {}th percentile".format(self.percentile))
-            self.filter_states()
+        self.cyclic = 'cyclic' in self.nsv_model_name
+        
+        self.get_states()
 
-        self.all_filelist = self.get_all_filelist()
     
-    def filter_states(self):
-
-        print("Filtering States (Keeping {}th percentile)".format(self.percentile))
-
-        print("Finite Difference Limit: ", self.output_norm)
-
-        print("Num traj before: ", len(self.states.keys()))
-
+    def filter_states(self,):
 
         suf = '' if self.flag == 'test' else '_' + self.flag
         nsv_filepath = os.path.join(self.data_filepath, self.object_name, 'variables'+suf, self.nsv_model_name)
-
-        if os.path.exists(os.path.join(nsv_filepath, "invalid.npy")):
-            invalid = np.load(os.path.join(nsv_filepath, "invalid.npy"))
-        else:
-            invalid = []
-
-            for vid_idx, seq in self.states.items():
-
-                fd = np.abs(seq[1:,:] - seq[:-1,:])
-                
-                for i in range(seq.shape[-1]):
-                    if np.any(fd[:,i] > self.output_norm[i]):
-                        invalid.append(vid_idx)
-                        break
-            
-            np.save(os.path.join(nsv_filepath, "total.npy"), np.array(list(self.states.keys())))
-            np.save(os.path.join(nsv_filepath, "invalid.npy"), np.array(invalid))
         
-        for id in invalid:
-            del self.states[id]
+        trajectories = copy.deepcopy(self.states)
+
+        finite_difference = []
+        for vid_idx in trajectories.keys():
+            trajectories[vid_idx] = np.array(trajectories[vid_idx])
+
+            if self.cyclic:
+                #print("cyclic")
+                for i in range(1,trajectories[vid_idx].shape[0]):
+                    for j in range(trajectories[vid_idx].shape[1]):
+                        if trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] > 1:
+                            trajectories[vid_idx][i:,j] -= 2
+                        elif trajectories[vid_idx][i,j] - trajectories[vid_idx][i-1,j] < -1:
+                            trajectories[vid_idx][i:,j] += 2
+                
+            finite_difference.extend(trajectories[vid_idx][1:,:]-trajectories[vid_idx][:-1,:])
+
+        finite_difference = np.array(finite_difference)
+        output_norm = np.percentile(np.abs(finite_difference), self.percentile, axis=0)
+        
+        print("Filtering States (Keeping {}th percentile)".format(self.percentile))
+
+        print("Finite Difference Limit: ", output_norm)
+
+        print("Num traj before: ", len(trajectories.keys()))
+
+        invalid = []
+
+        for vid_idx, seq in trajectories.items():
+
+            fd = np.abs(seq[1:,:] - seq[:-1,:])
+            
+            for i in range(seq.shape[-1]):
+                if np.any(fd[:,i] > output_norm[i]):
+                    invalid.append(vid_idx)
+                    break
+        
+        np.save(os.path.join(nsv_filepath, "total.npy"), np.array(list(self.states.keys())))
+        np.save(os.path.join(nsv_filepath, "invalid.npy"), np.array(invalid))
+
+        if not len(invalid) == len(self.states.keys()):
+            for id in invalid:
+                del self.states[id]
 
         print("Num traj after: ", len(self.states.keys()))
+
+        return invalid
 
     def get_all_filelist(self):
         vid_list = list(self.states.keys())
@@ -175,7 +187,7 @@ class RegressDataset(Dataset):
         filelist = []
         for vid_idx in vid_list:
             num_frames = self.states[vid_idx].shape[0]
-            for p_frame in range(self.extra_steps, num_frames - 1):
+            for p_frame in range(num_frames - 1):
                 par_list = (vid_idx, p_frame)
                 filelist.append(par_list)
 
@@ -183,12 +195,19 @@ class RegressDataset(Dataset):
 
     def get_states(self):
         suf = '' if self.flag == 'test' else '_' + self.flag
+
         nsv_filepath = os.path.join(self.data_filepath, self.object_name, 'variables'+suf, self.nsv_model_name)
         ids = np.load(os.path.join(nsv_filepath, 'ids.npy'))
         nsv = np.load(os.path.join(nsv_filepath, 'refine_latent.npy'))
-        states = self.trajectories_from_data_ids(ids, nsv)
-    
-        return states
+
+        self.states = self.trajectories_from_data_ids(ids, nsv)
+
+        if self.filter_data:
+            print("Filtering {}th percentile".format(self.percentile))
+            self.filter_states()
+        
+        self.all_filelist = self.get_all_filelist()
+
 
     def __len__(self):
         return len(self.all_filelist)
@@ -205,46 +224,55 @@ class RegressDataset(Dataset):
         rho = self.decay_rate
         seq = self.states[vid_idx]
 
-        data = torch.tensor(np.concatenate(seq[p_frame-self.extra_steps:p_frame+1]))
-        data = data.float()
+        data_nsv = torch.tensor(seq[p_frame])
 
-        target = torch.tensor(np.array([np.concatenate(seq[f-self.extra_steps:f+1], axis=0) for f in range(p_frame+1, seq.shape[0])]))
+        target_nsv = torch.tensor(seq[p_frame + 1:])
 
-        target = torch.cat((target, torch.zeros(p_frame-self.extra_steps, (1 + self.extra_steps)*seq.shape[1])), 0)
-        target = target.float()
+        cur_step = data_nsv
 
-        scales = torch.arange(seq.shape[0]-p_frame-1)
-        weight = rho ** scales
+        if self.cyclic:
+            for i in range(target_nsv.shape[0]):
+                for j in range(target_nsv.shape[1]):
+                    if target_nsv[i,j] - cur_step[j] > 1:
+                        target_nsv[i:,j] -= 2
+                    elif target_nsv[i,j] - cur_step[j] < -1:
+                        target_nsv[i:,j] += 2
+                cur_step = target_nsv[i]
+
+
+        target_nsv = torch.cat((target_nsv, torch.zeros(p_frame, seq.shape[1])), 0)
+
+        weight = rho ** torch.arange(seq.shape[0]-p_frame-1)
         weight = torch.reshape(weight, (-1, 1))
-        weight = torch.cat((weight, torch.zeros(p_frame-self.extra_steps, 1)), 0)
-        weight = weight.float()
-
-        assert self.pred_length <= target.shape[0]
-        target = target[:self.pred_length,:] 
-        weight = weight[:self.pred_length,:]
+        weight = torch.cat((weight, torch.zeros(p_frame, 1)), 0).float()
 
         weight = weight / (weight.sum() + .0000001)
 
-        return data, target, weight
+        return data_nsv, target_nsv, weight
 
     def trajectories_from_data_ids(self, ids, nsv):
+
+
         id2index = {tuple(id): i for i, id in enumerate(ids)}
         trajectories = collections.defaultdict(list)
+        indices = collections.defaultdict(list)
 
         for id in sorted(id2index.keys()):
             i = id2index[id]
             trajectories[id[0]].append(nsv[i])
+            indices[id[0]].append(ids[i][1])
 
-        
-        finite_difference = []
         for vid_idx in trajectories.keys():
-            trajectories[vid_idx] = np.array(trajectories[vid_idx])
+            #print("Before: ", trajectories[vid_idx])
+            #print(indices[vid_idx])
+            #print(trajectories[vid_idx])
+            traj = [x for _, x in sorted(zip(indices[vid_idx], trajectories[vid_idx]))]
+            #print((traj == trajectories[vid_idx]))
+            trajectories[vid_idx] = np.array(traj)
 
-            finite_difference.extend(trajectories[vid_idx][1:,:]-trajectories[vid_idx][:-1,:])
-
-        finite_difference = np.array(finite_difference)
-        self.output_norm = np.percentile(np.abs(finite_difference), self.percentile, axis=0)
-
+            # if self.flag == 'train':
+            #     ipdb.set_trace()
+            #print(trajectories[vid_idx])
 
         return trajectories
 

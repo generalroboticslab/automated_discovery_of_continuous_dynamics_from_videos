@@ -136,8 +136,11 @@ def summarize_nsvf(args, reject_threshold = 0.5):
     figs[0].add_trace(go.Scatter(x=t, y=latent8192_reject_ratio, line=dict(color=cols[5], width=7), name='Dim-8192'))
     
     update_figure(figs[0], True)
-    figs[0].update_layout( xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
-                            yaxis=dict(title='<b>Reject Ratio</b>', range=[-.01,1.05], tick0=0, dtick=0.5), 
+    # figs[0].update_layout( xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
+    #                         yaxis=dict(title='<b>Reject Ratio</b>', range=[-.01,1.05], tick0=0, dtick=0.5), 
+    #                         showlegend=False)
+    figs[0].update_layout( xaxis=dict( range=[0, dt*(pred_len+1)], nticks=3),
+                            yaxis=dict(range=[-.01,1.05], tick0=0, dtick=0.5), 
                             showlegend=False)
 
     smooth_phys_error_mean = {p_var: np.zeros(pred_len) for p_var in phys_vars_list}
@@ -234,9 +237,13 @@ def summarize_nsvf(args, reject_threshold = 0.5):
         
 
         update_figure(figs[i+1], True)
+        # figs[i+1].update_layout(#title=f'{var} error (L1)', 
+        #                     xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
+        #                     yaxis=dict(title="<b>L1 error</b>", tick0=0, nticks=6), 
+        #                     showlegend=False)
         figs[i+1].update_layout(#title=f'{var} error (L1)', 
-                            xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
-                            yaxis=dict(title="<b>L1 error</b>", tick0=0, nticks=6), 
+                            xaxis=dict(range=[0, dt*(pred_len+1)], nticks=3),
+                            yaxis=dict(tick0=0, nticks=6), 
                             showlegend=False)
     
     phys_vars_list = evaluator.get_phys_vars(True)
@@ -393,8 +400,11 @@ def summarize_nsv(args, reject_threshold=0.5):
     figs[0].add_trace(go.Scatter(x=t, y=latent8192_reject_ratio, line=dict(color=cols[5], width=7), name='Dim-8192'))
     
     update_figure(figs[0], True)
-    figs[0].update_layout( xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
-                            yaxis=dict(title='<b>Reject Ratio</b>', range=[-.01,1.05], tick0=0, dtick=0.5), 
+    # figs[0].update_layout( xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
+    #                         yaxis=dict(title='<b>Reject Ratio</b>', range=[-.01,1.05], tick0=0, dtick=0.5), 
+    #                         showlegend=False)
+    figs[0].update_layout( xaxis=dict(range=[0, dt*(pred_len+1)], nticks=3),
+                            yaxis=dict(range=[-.01,1.05], tick0=0, dtick=0.5), 
                             showlegend=False)
 
     smooth_phys_error_mean = {p_var: {method: np.zeros(pred_len) for method in methods} for p_var in phys_vars_list}
@@ -492,9 +502,13 @@ def summarize_nsv(args, reject_threshold=0.5):
     
 
         update_figure(figs[i+1], True)
+        # figs[i+1].update_layout(#title=f'{var} error (L1)', 
+        #                     xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
+        #                     yaxis=dict(title="<b>L1 error</b>", tick0=0, nticks=6), 
+        #                     showlegend=False)
         figs[i+1].update_layout(#title=f'{var} error (L1)', 
-                            xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
-                            yaxis=dict(title="<b>L1 error</b>", tick0=0, nticks=6), 
+                            xaxis=dict(range=[0, dt*(pred_len+1)], nticks=3),
+                            yaxis=dict(tick0=0, nticks=6), 
                             showlegend=False)
     
     phys_vars_list = evaluator.get_phys_vars(True)
@@ -618,8 +632,11 @@ def summarize_noAnnealing(args, reject_threshold=0.5):
     
         
     update_figure(figs[0], True)
-    figs[0].update_layout( xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
-                            yaxis=dict(title='<b>Reject Ratio</b>', range=[-.01,1.05], tick0=0, dtick=0.5), 
+    # figs[0].update_layout( xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
+    #                         yaxis=dict(title='<b>Reject Ratio</b>', range=[-.01,1.05], tick0=0, dtick=0.5), 
+    #                         showlegend=False)
+    figs[0].update_layout( xaxis=dict(range=[0, dt*(pred_len+1)], nticks=3),
+                            yaxis=dict(range=[-.01,1.05], tick0=0, dtick=0.5), 
                             showlegend=False)
 
     smooth_phys_error_mean = {p_var: {method: np.zeros(pred_len) for method in methods} for p_var in phys_vars_list}
@@ -673,9 +690,13 @@ def summarize_noAnnealing(args, reject_threshold=0.5):
             figs[i+1].add_trace(go.Scatter(x=t[:noAnnealing_max] + t[:noAnnealing_max][::-1], y=error_upper[:noAnnealing_max] + error_lower[:noAnnealing_max][::-1], fill='toself', fillcolor=cols[j+2], opacity=0.3, line=dict(color='rgba(255,255,255,0)'), hoverinfo="skip", showlegend=False))
             
         update_figure(figs[i+1], True)
+        # figs[i+1].update_layout(#title=f'{var} error (L1)', 
+        #                     xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
+        #                     yaxis=dict(title="<b>L1 error</b>", tick0=0, nticks=6), 
+        #                     showlegend=False)
         figs[i+1].update_layout(#title=f'{var} error (L1)', 
-                            xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
-                            yaxis=dict(title="<b>L1 error</b>", tick0=0, nticks=6), 
+                            xaxis=dict(range=[0, dt*(pred_len+1)], nticks=3),
+                            yaxis=dict(tick0=0, nticks=6), 
                             showlegend=False)
     
     phys_vars_list = evaluator.get_phys_vars(True)
@@ -793,8 +814,11 @@ def summarize_noFilter(args, reject_threshold=0.5):
     
         
     update_figure(figs[0], True)
-    figs[0].update_layout( xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
-                            yaxis=dict(title='<b>Reject Ratio</b>', range=[-.01,1.05], tick0=0, dtick=0.5), 
+    # figs[0].update_layout( xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
+    #                         yaxis=dict(title='<b>Reject Ratio</b>', range=[-.01,1.05], tick0=0, dtick=0.5), 
+    #                         showlegend=False)
+    figs[0].update_layout( xaxis=dict(range=[0, dt*(pred_len+1)], nticks=3),
+                            yaxis=dict(range=[-.01,1.05], tick0=0, dtick=0.5), 
                             showlegend=False)
 
     smooth_phys_error_mean = {p_var: np.zeros(pred_len) for p_var in phys_vars_list}
@@ -847,9 +871,13 @@ def summarize_noFilter(args, reject_threshold=0.5):
         figs[i+1].add_trace(go.Scatter(x=t[:noFilter_max] + t[:noFilter_max][::-1], y=error_upper[:noFilter_max] + error_lower[:noFilter_max][::-1], fill='toself', fillcolor=cols[2], opacity=0.3, line=dict(color='rgba(255,255,255,0)'), hoverinfo="skip", showlegend=False))
         
         update_figure(figs[i+1], True)
+        # figs[i+1].update_layout(#title=f'{var} error (L1)', 
+        #                     xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
+        #                     yaxis=dict(title="<b>L1 error</b>", tick0=0, nticks=6), 
+        #                     showlegend=False)
         figs[i+1].update_layout(#title=f'{var} error (L1)', 
-                            xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
-                            yaxis=dict(title="<b>L1 error</b>", tick0=0, nticks=6), 
+                            xaxis=dict(range=[0, dt*(pred_len+1)], nticks=3),
+                            yaxis=dict(tick0=0, nticks=6), 
                             showlegend=False)
     
     phys_vars_list = evaluator.get_phys_vars(True)
@@ -966,8 +994,11 @@ def summarize_discrete(args, reject_threshold=0.5):
     
         
     update_figure(figs[0], True)
-    figs[0].update_layout( xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
-                            yaxis=dict(title='<b>Reject Ratio</b>', range=[-.01,1.05], tick0=0, dtick=0.5), 
+    # figs[0].update_layout( xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
+    #                         yaxis=dict(title='<b>Reject Ratio</b>', range=[-.01,1.05], tick0=0, dtick=0.5), 
+    #                         showlegend=False)
+    figs[0].update_layout( xaxis=dict(range=[0, dt*(pred_len+1)], nticks=3),
+                            yaxis=dict(range=[-.01,1.05], tick0=0, dtick=0.5), 
                             showlegend=False)
 
     smooth_phys_error_mean = {p_var: np.zeros(pred_len) for p_var in phys_vars_list}
@@ -1020,9 +1051,13 @@ def summarize_discrete(args, reject_threshold=0.5):
         figs[i+1].add_trace(go.Scatter(x=t[:discrete_max] + t[:discrete_max][::-1], y=error_upper[:discrete_max] + error_lower[:discrete_max][::-1], fill='toself', fillcolor=cols[2], opacity=0.3, line=dict(color='rgba(255,255,255,0)'), hoverinfo="skip", showlegend=False))
         
         update_figure(figs[i+1], True)
+        # figs[i+1].update_layout(#title=f'{var} error (L1)', 
+        #                     xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
+        #                     yaxis=dict(title="<b>L1 error</b>", tick0=0, nticks=6), 
+        #                     showlegend=False)
         figs[i+1].update_layout(#title=f'{var} error (L1)', 
-                            xaxis=dict(title='<b>Time (s)</b>', range=[0, dt*(pred_len+1)], nticks=3),
-                            yaxis=dict(title="<b>L1 error</b>", tick0=0, nticks=6), 
+                            xaxis=dict(range=[0, dt*(pred_len+1)], nticks=3),
+                            yaxis=dict(tick0=0, nticks=6), 
                             showlegend=False)
     
     phys_vars_list = evaluator.get_phys_vars(True)
@@ -1069,7 +1104,7 @@ def summarize_eq(args, model_type='smooth', steps=60):
     for seed in seeds:
         if model_type == 'smooth':
             cfg = load_config(filepath=os.path.join(args.config_dir, args.dataset, f'trial{seed}', 'regress-smooth-filtered.yaml'))
-        elif mdoel_type == 'noFilter':
+        elif model_type == 'noFilter':
             cfg = load_config(filepath=os.path.join(args.config_dir, args.dataset, f'trial{seed}', 'regress-smooth.yaml'))
         else:
             cfg = load_config(filepath=os.path.join(args.config_dir, args.dataset, f'trial{seed}', 'regress-base-filtered.yaml'))
@@ -1122,10 +1157,10 @@ def summarize_smoothness(args,):
 
 
     print("Smooth")
-    print('SM_1_1: %.2f (±%.2f)' % (np.mean(variation_mean), np.std(variation_mean)))
-    print('SM_2_1: %.2f (±%.2f)' % (np.mean(variation_ord2_mean), np.std(variation_ord2_mean)))
-    print('SM_1_inf mean: %.2f (±%.2f)' % (np.mean(variation_max), np.std(variation_max)))
-    print('SM_2_inf mean: %.2f (±%.2f)' % (np.mean(variation_ord2_max), np.std(variation_ord2_max)))
+    print('SM_1_1: %.2f (±%.2f)' % (np.mean(variation_mean), np.std(variation_mean)/np.sqrt(variation_mean.shape[0])))
+    print('SM_2_1: %.2f (±%.2f)' % (np.mean(variation_ord2_mean), np.std(variation_ord2_mean)/np.sqrt(variation_ord2_mean.shape[0])))
+    print('SM_1_inf mean: %.2f (±%.2f)'  % (np.mean(variation_max), np.std(variation_max)/np.sqrt(variation_max.shape[0])))
+    print('SM_2_inf mean: %.2f (±%.2f)'  % (np.mean(variation_ord2_max), np.std(variation_ord2_max)//np.sqrt(variation_ord2_max.shape[0])))
 
     base_models = []
     for seed in seeds:
@@ -1164,10 +1199,10 @@ def summarize_smoothness(args,):
 
 
     print("Base")
-    print('SM_1_1: %.2f (±%.2f)' % (np.mean(variation_mean), np.std(variation_mean)))
-    print('SM_2_1: %.2f (±%.2f)' % (np.mean(variation_ord2_mean), np.std(variation_ord2_mean)))
-    print('SM_1_inf mean: %.2f (±%.2f)' % (np.mean(variation_max), np.std(variation_max)))
-    print('SM_2_inf mean: %.2f (±%.2f)' % (np.mean(variation_ord2_max), np.std(variation_ord2_max)))
+    print('SM_1_1: %.2f (±%.2f)' % (np.mean(variation_mean), np.std(variation_mean)/np.sqrt(variation_mean.shape[0])))
+    print('SM_2_1: %.2f (±%.2f)' % (np.mean(variation_ord2_mean), np.std(variation_ord2_mean)/np.sqrt(variation_ord2_mean.shape[0])))
+    print('SM_1_inf mean: %.2f (±%.2f)' % (np.mean(variation_max), np.std(variation_max)/np.sqrt(variation_max.shape[0])))
+    print('SM_2_inf mean: %.2f (±%.2f)' % (np.mean(variation_ord2_max), np.std(variation_ord2_max)//np.sqrt(variation_ord2_max.shape[0])))
 
 
 def summarize_id(args):
@@ -1183,7 +1218,7 @@ def summarize_id(args):
     
     id = np.concatenate(id)
 
-    print(f'System: {args.dataset}\nIntrinsic Dimension Estimate: {id.mean()} (± {id.std()})')
+    print(f'System: {args.dataset}\nIntrinsic Dimension Estimate: {id.mean():.2f} (± {id.std()/np.sqrt(id.shape[0]):.2f})')
 
 def summarize_nsv_singleStep(args):
     data_path = os.path.join(args.output_dir, args.dataset, 'tasks')
@@ -1222,7 +1257,7 @@ def summarize_nsv_singleStep(args):
     
     base_accuracy = np.array(base_accuracy)
 
-    print(f'{args.dataset} base average pxl rec loss: ', '%.3e (±%.3e)' % (base_accuracy.mean(), base_accuracy.std()))
+    print(f'{args.dataset} base average pxl rec loss: ', '%.3e (±%.3e)' % (base_accuracy.mean(), base_accuracy.std()/np.sqrt(base_accuracy.shape[0])))
 
     smooth_accuracy = []
 
@@ -1234,7 +1269,7 @@ def summarize_nsv_singleStep(args):
     
     smooth_accuracy = np.array(smooth_accuracy)
 
-    print(f'{args.dataset} smooth average pxl rec loss: ', '%.3e (±%.3e)' % (smooth_accuracy.mean(), smooth_accuracy.std()))
+    print(f'{args.dataset} smooth average pxl rec loss: ', '%.3e (±%.3e)' % (smooth_accuracy.mean(), smooth_accuracy.std()/np.sqrt(smooth_accuracy.shape[0])))
     
     noAnnealing_accuracy = []
 
@@ -1246,7 +1281,7 @@ def summarize_nsv_singleStep(args):
     
     noAnnealing_accuracy = np.array(noAnnealing_accuracy)
 
-    print(f'{args.dataset} no annealing average pxl rec loss: ', '%.3e (±%.3e)' % (noAnnealing_accuracy.mean(), noAnnealing_accuracy.std()))
+    print(f'{args.dataset} no annealing average pxl rec loss: ', '%.3e (±%.3e)' % (noAnnealing_accuracy.mean(), noAnnealing_accuracy.std()/np.sqrt(noAnnealing_accuracy.shape[0])))
     
 
 
@@ -1254,6 +1289,14 @@ def summarize_nsvf_singleStep(args):
     data_path = os.path.join(args.output_dir, args.dataset, 'tasks')
 
     seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+
+    base_models = []
+    for seed in seeds:
+        cfg = load_config(filepath=os.path.join(args.config_dir, args.dataset, f'trial{seed}', 'regress-base-filtered.yaml'))
+        cfg_args = munchify(cfg)
+        name = create_name(cfg_args)
+        base_models.append(name)
+
 
     smooth_models = []
     for seed in seeds:
@@ -1276,13 +1319,17 @@ def summarize_nsvf_singleStep(args):
         name = create_name(cfg_args)
         discrete_models.append(name)
 
+    
+    base_accuracy = []
 
-    base_models = []
-    for seed in seeds:
-        cfg = load_config(filepath=os.path.join(args.config_dir, args.dataset, f'trial{seed}', 'regress-base-filtered.yaml'))
-        cfg_args = munchify(cfg)
-        name = create_name(cfg_args)
-        base_models.append(name)
+    for base_model in base_models:
+
+        result = np.load(os.path.join(data_path, base_model, 'test_result/results.npy'), allow_pickle=True).item()
+
+        base_accuracy.append(result['pxl_rec_test_loss_epoch'])
+    base_accuracy = np.array(base_accuracy)
+
+    print(f'{args.dataset} base average pxl rec loss: ', '%.3e (±%.3e)' % (base_accuracy.mean(), base_accuracy.std()/np.sqrt(base_accuracy.shape[0])))
 
     smooth_accuracy = []
 
@@ -1293,18 +1340,8 @@ def summarize_nsvf_singleStep(args):
         smooth_accuracy.append(result['pxl_rec_test_loss_epoch'])
     smooth_accuracy = np.array(smooth_accuracy)
 
-    print(f'{args.dataset} smooth average pxl rec loss: ', '%.3e (±%.3e)' % (smooth_accuracy.mean(), smooth_accuracy.std()))
+    print(f'{args.dataset} smooth average pxl rec loss: ', '%.3e (±%.3e)' % (smooth_accuracy.mean(), smooth_accuracy.std()/np.sqrt(smooth_accuracy.shape[0])))
 
-    base_accuracy = []
-
-    for base_model in base_models:
-
-        result = np.load(os.path.join(data_path, base_model, 'test_result/results.npy'), allow_pickle=True).item()
-
-        base_accuracy.append(result['pxl_rec_test_loss_epoch'])
-    base_accuracy = np.array(base_accuracy)
-
-    print(f'{args.dataset} base average pxl rec loss: ', '%.3e (±%.3e)' % (base_accuracy.mean(), base_accuracy.std()))
 
     noFilter_accuracy = []
 
@@ -1316,7 +1353,7 @@ def summarize_nsvf_singleStep(args):
     
     noFilter_accuracy = np.array(noFilter_accuracy)
 
-    print(f'{args.dataset} noFilter smooth average pxl rec loss: ', '%.3e (±%.3e)' % (noFilter_accuracy.mean(), noFilter_accuracy.std()))
+    print(f'{args.dataset} noFilter smooth average pxl rec loss: ', '%.3e (±%.3e)' % (noFilter_accuracy.mean(), noFilter_accuracy.std()/np.sqrt(noFilter_accuracy.shape[0])))
     
     discrete_accuracy = []
 
@@ -1328,7 +1365,7 @@ def summarize_nsvf_singleStep(args):
     
     discrete_accuracy = np.array(discrete_accuracy)
 
-    print(f'{args.dataset} (finite difference training) smooth average pxl rec loss: ', '%.3e (±%.3e)' % (discrete_accuracy.mean(), discrete_accuracy.std()))
+    print(f'{args.dataset} (finite difference training) smooth average pxl rec loss: ', '%.3e (±%.3e)' % (discrete_accuracy.mean(), discrete_accuracy.std()/np.sqrt(discrete_accuracy.shape[0])))
     
 
 def filter_remaining(args):
@@ -1365,7 +1402,7 @@ def filter_remaining(args):
 
         totals = np.array(totals)
         remaining = np.array(remaining)
-        print('Remaining Trajectories (%s) : %.2f (±%.2f) /  %d' % (suf[1:] if suf!='' else 'test', np.mean(remaining), np.std(remaining),np.mean(totals)))
+        print('Remaining Trajectories (%s) : %.2f (±%.2f) /  %d' % (suf[1:] if suf!='' else 'test', np.mean(remaining), np.std(remaining)/np.sqrt(remaining.shape[0]),np.mean(totals)))
     
     base_models = []
     for seed in seeds:
@@ -1396,7 +1433,7 @@ def filter_remaining(args):
 
         totals = np.array(totals)
         remaining = np.array(remaining)
-        print('Remaining Trajectories (%s) : %.2f (±%.2f) /  %d' % (suf[1:] if suf!='' else 'test', np.mean(remaining), np.std(remaining),np.mean(totals)))
+        print('Remaining Trajectories (%s) : %.2f (±%.2f) /  %d' % (suf[1:] if suf!='' else 'test', np.mean(remaining), np.std(remaining)/np.sqrt(remaining.shape[0]),np.mean(totals)))
         
 
 
