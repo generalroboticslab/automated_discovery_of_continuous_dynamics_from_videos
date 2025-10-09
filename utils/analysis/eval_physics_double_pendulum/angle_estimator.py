@@ -9,7 +9,7 @@ Certain images will be rejected if any pendulum does not exist, is hidden, or ha
 import cv2
 import os
 import numpy as np
-
+from PIL import ImageFont, ImageDraw, Image
 
 '''
 Extract the two pendulums from the image.
@@ -124,11 +124,43 @@ def obtain_angle(img):
     if rej_1:
         rej = True
         angles = []
-        cv2.putText(img_marked, 'Reject', (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+        # cv2.putText(img_marked, 'Reject', (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+        cv2.line(img_marked, (64,64), (64,128), (0, 0, 255), 1)
+
+        img_pil = Image.fromarray(img_marked)
+
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  
+
+        font_main = ImageFont.truetype(font_path, size=24)
+        font_sub = ImageFont.truetype(font_path, size=10)
+        main_x, main_y = (5,0)
+
+        # Draw the text using PIL
+        draw = ImageDraw.Draw(img_pil)
+        text = "Reject"
+        draw.text((main_x, main_y),  text, font=font_main, fill=0)
+
+        img_marked = np.asarray(img_pil)
     elif rej_2:
         rej = True
         angles = []
-        cv2.putText(img_marked, 'Reject', (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+        # cv2.putText(img_marked, 'Reject', (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+        cv2.line(img_marked, (64,64), (64,128), (0, 0, 255), 1)
+
+        img_pil = Image.fromarray(img_marked)
+
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  
+
+        font_main = ImageFont.truetype(font_path, size=24)
+        font_sub = ImageFont.truetype(font_path, size=10)
+        main_x, main_y = (5,0)
+
+        # Draw the text using PIL
+        draw = ImageDraw.Draw(img_pil)
+        text = "Reject"
+        draw.text((main_x, main_y),  text, font=font_main, fill=0)
+
+        img_marked = np.asarray(img_pil)
     else:
         rej = False
         img_center = np.array([64, 64])
@@ -144,7 +176,34 @@ def obtain_angle(img):
         #cv2.arrowedLine(img_marked, arrow_1[0], arrow_1[1], (0, 0, 255), 1, tipLength=0.25)
         #cv2.arrowedLine(img_marked, arrow_2[0], arrow_2[1], (0, 0, 255), 1, tipLength=0.25)
         # mark the estimated angles in degrees
-        text = str((round(angle_1*180/np.pi)+ 180) % 360 - 180) + ' ' + str((round(angle_2*180/np.pi)+ 180) % 360 - 180)
-        cv2.putText(img_marked, text, (10, 25), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 0, 0), 2)
+        # text = str((round(angle_1*180/np.pi)+ 180) % 360 - 180) + ' ' + str((round(angle_2*180/np.pi)+ 180) % 360 - 180)
+        # cv2.putText(img_marked, text, (10, 25), cv2.FONT_HERSHEY_DUPLEX, 0.8, (0, 0, 0), 2)
+
+        cv2.line(img_marked, (64,64), (64,128), (0, 0, 255), 1)
+
+        img_pil = Image.fromarray(img_marked)
+
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  
+
+        font_main = ImageFont.truetype(font_path, size=24)
+        font_sub = ImageFont.truetype(font_path, size=10)
+        main_x, main_y = (5,0)
+
+        # Draw the text using PIL
+        draw = ImageDraw.Draw(img_pil)
+        text = "θ =" + str((round((angle_1*180/np.pi)+ 180) % 360 - 180)) + "°\nθ ="+ str((round((angle_2*180/np.pi)+ 180) % 360 - 180)) + "°"
+        draw.text((main_x, main_y),  text, font=font_main, fill=0)
+
+        sub_x = main_x + font_main.getlength("θ") - font_sub.getlength("1") * 0.15 
+        sub_y = main_y + font_main.getbbox("θ")[3] 
+        draw.text((sub_x, sub_y), "1", fill=(0,0,0), font=font_sub)
+
+        sub_x = main_x + font_main.getlength("θ") - font_sub.getlength("2") * 0.15 
+        sub_y = main_y + 2.2*font_main.getbbox("θ")[3] 
+        draw.text((sub_x, sub_y), "2", fill=(0,0,0), font=font_sub)
+
+        # Back to float32 in [0,1] if you need it again as numpy
+        img_marked = np.asarray(img_pil)
+
 
     return rej, angles, img_marked

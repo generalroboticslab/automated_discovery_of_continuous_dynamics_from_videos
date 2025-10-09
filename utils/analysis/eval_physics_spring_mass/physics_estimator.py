@@ -7,7 +7,6 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 
 # physical parameters
-fps = 60  # frames per second
 k = 80    # spring constant
 m = 1.0   # bob mass (kg)
 
@@ -20,7 +19,7 @@ using numerical differentiation.
 method='fd': finite difference;
 method='spline': cubic spline fitting.
 '''
-def calc_velocity(pos, method='spline'):
+def calc_velocity(pos, method='spline', fps=60):
     len_seq = pos.shape[0]
 
     # isolated data

@@ -8,7 +8,7 @@ import cv2
 from tqdm import tqdm
 
 
-def eval_physics_spring_mass(frames):
+def eval_physics_spring_mass(frames, fps=60):
 
     phys_vars_list =  ['reject', 'x', 'vel_x', 'kinetic energy', 'potential energy', 'total energy']
  
@@ -32,7 +32,7 @@ def eval_physics_spring_mass(frames):
     vel_x = np.zeros(num_frames)
     sub_ids = np.ma.clump_unmasked(np.ma.masked_array(x, reject))
     for ids in sub_ids:
-       vel_x[ids] = calc_velocity(x[ids].copy())
+       vel_x[ids] = calc_velocity(x[ids].copy(), fps=fps)
     vel_x[reject] = np.nan
     # calculate energies
     kinetic_energy, potential_energy, total_energy = calc_energy(x, vel_x)
@@ -49,7 +49,7 @@ def eval_physics_spring_mass(frames):
     return phys, marked_images
 
 
-def eval_phys_data_spring_mass(data_filepath, num_vids, num_frms, save_path, return_marked=False):
+def eval_phys_data_spring_mass(data_filepath, num_vids, num_frms, save_path, return_marked=False, fps=60):
 
     phys_vars_list =  ['reject', 'x', 'vel_x', 'kinetic energy', 'potential energy', 'total energy']
 
@@ -67,7 +67,7 @@ def eval_phys_data_spring_mass(data_filepath, num_vids, num_frms, save_path, ret
         for p in images:
             frame_p = cv2.imread(os.path.join(seq_filepath, p))
             frames.append(frame_p)
-        phys_tmp, m_i = eval_physics_spring_mass(frames)
+        phys_tmp, m_i = eval_physics_spring_mass(frames, fps=fps)
         marked_images.append(m_i)
         for p_var in phys_vars_list:
             phys[p_var].append(phys_tmp[p_var])

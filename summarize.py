@@ -21,14 +21,19 @@ def summarize_nsvf(args, reject_threshold = 0.5):
     save_path = os.path.join(args.output_dir, args.dataset, 'summary', 'nsvf_predictions_long_term')
     mkdir(save_path)
 
-    pred_len = 60 if args.dataset != 'cylindrical_flow' else 200
-    dt = 1/60 if args.dataset != 'cylindrical_flow' else .02
+    pred_len = 60 if 'cylindrical_flow' not in args.dataset  else 200
+    dt = 1/60 if 'cylindrical_flow' not in args.dataset else .02
+
+    if 'timeAblation' in args.dataset:
+        pred_len //= 2
+        dt *= 2
+
     t = np.linspace(0,dt*pred_len, pred_len).tolist()
 
     nsvf_data_path = os.path.join(args.output_dir, args.dataset, 'tasks')
     data_path = os.path.join(args.output_dir, args.dataset, 'predictions_long_term')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
     
     smooth_models = []
     for seed in seeds:
@@ -287,13 +292,18 @@ def summarize_nsv(args, reject_threshold=0.5):
     save_path = os.path.join(args.output_dir, args.dataset, 'summary', 'nsv_predictions_long_term')
     mkdir(save_path)
 
-    pred_len = 60 if args.dataset != 'cylindrical_flow' else 200
-    dt = 1/60 if args.dataset != 'cylindrical_flow' else .02
+    pred_len = 60 if 'cylindrical_flow' not in args.dataset  else 200
+    dt = 1/60 if 'cylindrical_flow' not in args.dataset else .02
+
+    if 'timeAblation' in args.dataset:
+        pred_len //= 2
+        dt *= 2
+
     t = np.linspace(0,dt*pred_len, pred_len).tolist()
 
     data_path = os.path.join(args.output_dir, args.dataset, 'predictions_long_term')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
     
     smooth_models = []
     for seed in seeds:
@@ -553,13 +563,18 @@ def summarize_noAnnealing(args, reject_threshold=0.5):
     save_path = os.path.join(args.output_dir, args.dataset, 'summary', 'noAnnealing')
     mkdir(save_path)
 
-    pred_len = 60 if args.dataset != 'cylindrical_flow' else 200
-    dt = 1/60 if args.dataset != 'cylindrical_flow' else .02
+    pred_len = 60 if 'cylindrical_flow' not in args.dataset  else 200
+    dt = 1/60 if 'cylindrical_flow' not in args.dataset else .02
+
+    if 'timeAblation' in args.dataset:
+        pred_len //= 2
+        dt *= 2
+
     t = np.linspace(0,dt*pred_len, pred_len).tolist()
 
     data_path = os.path.join(args.output_dir, args.dataset, 'predictions_long_term')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
     
     smooth_models = []
     for seed in seeds:
@@ -737,13 +752,18 @@ def summarize_noFilter(args, reject_threshold=0.5):
     save_path = os.path.join(args.output_dir, args.dataset, 'summary', 'noFilter')
     mkdir(save_path)
 
-    pred_len = 60 if args.dataset != 'cylindrical_flow' else 200
-    dt = 1/60 if args.dataset != 'cylindrical_flow' else .02
+    pred_len = 60 if 'cylindrical_flow' not in args.dataset  else 200
+    dt = 1/60 if 'cylindrical_flow' not in args.dataset else .02
+
+    if 'timeAblation' in args.dataset:
+        pred_len //= 2
+        dt *= 2
+
     t = np.linspace(0,dt*pred_len, pred_len).tolist()
 
     data_path = os.path.join(args.output_dir, args.dataset, 'tasks')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
     
     smooth_models = []
     for seed in seeds:
@@ -917,13 +937,18 @@ def summarize_discrete(args, reject_threshold=0.5):
     save_path = os.path.join(args.output_dir, args.dataset, 'summary', 'discrete')
     mkdir(save_path)
 
-    pred_len = 60 if args.dataset != 'cylindrical_flow' else 200
-    dt = 1/60 if args.dataset != 'cylindrical_flow' else .02
+    pred_len = 60 if 'cylindrical_flow' not in args.dataset  else 200
+    dt = 1/60 if 'cylindrical_flow' not in args.dataset else .02
+
+    if 'timeAblation' in args.dataset:
+        pred_len //= 2
+        dt *= 2
+        
     t = np.linspace(0,dt*pred_len, pred_len).tolist()
 
     data_path = os.path.join(args.output_dir, args.dataset, 'tasks')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
     
     smooth_models = []
     for seed in seeds:
@@ -1098,7 +1123,7 @@ def summarize_eq(args, model_type='smooth', steps=60):
 
     data_path = os.path.join(args.output_dir, args.dataset, 'tasks')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
     
     smooth_models = []
     for seed in seeds:
@@ -1118,7 +1143,7 @@ def summarize_smoothness(args,):
 
     data_path = os.path.join(args.output_dir, args.dataset, 'tasks')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
 
     smooth_models = []
     for seed in seeds:
@@ -1208,7 +1233,7 @@ def summarize_smoothness(args,):
 def summarize_id(args):
     data_path = os.path.join(args.output_dir, args.dataset, 'variables')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
 
     id = []
 
@@ -1223,7 +1248,7 @@ def summarize_id(args):
 def summarize_nsv_singleStep(args):
     data_path = os.path.join(args.output_dir, args.dataset, 'tasks')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
 
     smooth_models = []
     for seed in seeds:
@@ -1288,7 +1313,7 @@ def summarize_nsv_singleStep(args):
 def summarize_nsvf_singleStep(args):
     data_path = os.path.join(args.output_dir, args.dataset, 'tasks')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
 
     base_models = []
     for seed in seeds:
@@ -1372,7 +1397,7 @@ def filter_remaining(args):
 
     data_path = os.path.join(args.output_dir, args.dataset, 'tasks')
 
-    seeds = [1,2,3] if args.dataset != 'spring_mass' else [1,3,4]
+    seeds = [1,2,3] if 'spring_mass' not in args.dataset else [1,3,4]
 
     smooth_models = []
     for seed in seeds:

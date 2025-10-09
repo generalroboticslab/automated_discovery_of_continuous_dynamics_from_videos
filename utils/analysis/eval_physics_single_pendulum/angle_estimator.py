@@ -9,7 +9,7 @@ Certain images will be rejected if the pendulum does not exist or has a wrong sh
 import cv2
 import os
 import numpy as np
-
+from PIL import ImageFont, ImageDraw, Image
 
 '''
 Extract the pendulum from the image.
@@ -117,7 +117,22 @@ def obtain_angle(img):
         # mark the direction vector
         #cv2.arrowedLine(img_marked, arrow[0], arrow[1], (0, 0, 255), 1, tipLength=0.25)
         # mark the estimated angle in degrees
-        cv2.putText(img_marked, str((round((angle*180/np.pi)+ 180) % 360 - 180)), (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+        #cv2.putText(img_marked, "θ=" + str((round((angle*180/np.pi)+ 180) % 360 - 180)), (10, 25), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 0), 2)
+
+        cv2.line(img_marked, (64,64), (64,128), (0, 0, 255), 1)
+
+        img_pil = Image.fromarray(img_marked)
+        draw = ImageDraw.Draw(img_pil)
+
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  
+
+        font = ImageFont.truetype(font_path, size=24)
+
+        # Draw the text using PIL
+        draw.text((5, 0),  "θ=" + str((round((angle*180/np.pi)+ 180) % 360 - 180)) + "°", font=font, fill=(0, 0, 0))
+
+        img_marked = np.asarray(img_pil)
+
     else:
         # mark the rejection
         cv2.putText(img_marked, 'Reject', (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)

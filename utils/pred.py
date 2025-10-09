@@ -55,7 +55,18 @@ def load_data_physics(data_filepath, dataset, phys_vars_list, seed):
         seq_dict = json.load(file)
     vid_ids = seq_dict['test']
 
-    phys = np.load(os.path.join(data_filepath, dataset, 'phys_vars.npy'), allow_pickle=True).item()
+    physics_variable_path = os.path.join(data_filepath, dataset, 'phys_vars.npy')
+    if not os.path.exists(physics_variable_path):
+        evaluator = Physics_Evaluator(dataset)
+        num_files = 0
+        for f in os.listdir(os.path.join(data_filepath, dataset)):
+            if f.isdigit():
+                num_files += 1
+        
+        num_frames = len(os.listdir(os.path.join(data_filepath, dataset, "0")))
+        evaluator.eval_physics(os.path.join(data_filepath, dataset), range(num_files), num_frames, physics_variable_path)
+
+    phys = np.load(physics_variable_path, allow_pickle=True).item()
     seen = set()
     for p_var in phys_vars_list:
         if p_var in seen:
@@ -69,13 +80,16 @@ def analyze_trajectories(seed, dataset, log_dir, methods, baseline_log_dir, data
     if dataset == "fire":
         return
     
-    dt = 1/60 if dataset != 'cylindrical_flow' else .02
+    dt = 1/60 if 'cylindrical_flow' not in dataset else .02
+
+    if 'timeAblation' in dataset:
+        dt = dt * 2
         
     evaluator = Physics_Evaluator(dataset)
     phys_vars_list = evaluator.get_phys_vars(False)
 
     mkdir(os.path.join(log_dir, 'plots'))
-    fig, axs = plt.subplots(1,len(phys_vars_list) + 1, layout='constrained', figsize=(8*(len(phys_vars_list)+1), 6))
+    fig, axs = plt.subplots(1, len(phys_vars_list) + 1, layout='constrained', figsize=(8*(len(phys_vars_list)+1), 6))
 
     figs = [go.Figure() for _ in range(len(phys_vars_list) + 1)]
 
@@ -152,7 +166,11 @@ def analyze_trajectories(seed, dataset, log_dir, methods, baseline_log_dir, data
     phys_error_mean = {p_var: {method: np.zeros(pred_len) for method in methods} for p_var in phys_vars_list}
     phys_error_sem = {p_var: {method: np.zeros(pred_len) for method in methods} for p_var in phys_vars_list}
 
-    pred_len = 60 if dataset != 'cylindrical_flow' else 200
+    pred_len = 60 if 'cylindrical_flow' not in dataset else 200
+
+    if 'timeAblation' in dataset:
+        pred_len //= 2
+
     for i, var in  enumerate(phys_vars_list):
         #plt.figure()
 
@@ -251,7 +269,11 @@ def model_rollout(net, args):
         seq_dict = json.load(file)
     test_vid_ids = seq_dict['test']
 
-    pred_len = 60 if args.dataset != 'cylindrical_flow' else 200 # HARD CODED PRED LENGTH
+    pred_len = 60 if 'cylindrical_flow' not in args.dataset else 200 # HARD CODED PRED LENGTH
+
+    if 'timeAblation' in args.dataset:
+        pred_len //= 2
+
     long_term_folder = os.path.join(log_dir, 'model_rollout')
     mkdir(long_term_folder)
     loss_dict = {}
@@ -427,7 +449,10 @@ def model_rollout_hybrid(net, args, step):
         seq_dict = json.load(file)
     test_vid_ids = seq_dict['test']
 
-    pred_len = 60 if args.dataset != 'cylindrical_flow' else 200 # HARD CODED PRED LENGTH
+    pred_len = 60 if 'cylindrical_flow' not in args.dataset else 200 # HARD CODED PRED LENGTH
+    if 'timeAblation' in args.dataset:
+        pred_len //= 2
+
     long_term_folder = os.path.join(log_dir, f'hybrid_rollout_{step}')
     mkdir(long_term_folder)
     loss_dict = {}

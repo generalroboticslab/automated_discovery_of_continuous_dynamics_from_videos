@@ -17,7 +17,7 @@ class Physics_Evaluator:
 
         self.dataset = dataset
 
-        if self.dataset == 'cylindrical_flow':
+        if 'cylindrical_flow' in self.dataset:
 
             self.c2idx = torch.jit.load('./data/cylindrical_flow/c2idx.pt')
             self.c2idx.cuda()
@@ -25,34 +25,34 @@ class Physics_Evaluator:
     
     def eval_physics(self, data_filepath, num_vids, num_frms, save_path, return_marked=False):
 
-        if self.dataset == "single_pendulum":
-            return eval_phys_data_single_pendulum(data_filepath, num_vids, num_frms, save_path, return_marked=return_marked)
-        elif self.dataset == "double_pendulum":
-            return eval_phys_data_double_pendulum(data_filepath, num_vids, num_frms, save_path, return_marked=return_marked)
-        elif self.dataset == "spring_mass":
-            return eval_phys_data_spring_mass(data_filepath, num_vids, num_frms, save_path, return_marked=return_marked)
-        elif self.dataset == "cylindrical_flow":
+        if "single_pendulum" in self.dataset:
+            return eval_phys_data_single_pendulum(data_filepath, num_vids, num_frms, save_path, return_marked=return_marked, fps=30 if 'timeAblation' in self.dataset else 60)
+        elif"double_pendulum" in self.dataset:
+            return eval_phys_data_double_pendulum(data_filepath, num_vids, num_frms, save_path, return_marked=return_marked, fps=30 if 'timeAblation' in self.dataset else 60)
+        elif"spring_mass" in self.dataset:
+            return eval_phys_data_spring_mass(data_filepath, num_vids, num_frms, save_path, return_marked=return_marked, fps=30 if 'timeAblation' in self.dataset else 60)
+        elif "cylindrical_flow" in self.dataset:
             self.c2idx.cuda()
             self.c2idx.eval()
             return eval_phys_data_cylindrical_flow(data_filepath, num_vids, num_frms, save_path, c2idx = self.c2idx, return_marked=return_marked)
 
     def get_phys_vars(self, include_reject=False):
-        if self.dataset == "single_pendulum":
+        if "single_pendulum" in self.dataset:
             if include_reject:
                 return ['reject', 'theta', 'vel_theta', 'kinetic energy', 'potential energy', 'total energy']
             else:
                 return ['theta', 'vel_theta', 'kinetic energy', 'potential energy', 'total energy']
-        if self.dataset == "spring_mass":
+        if "spring_mass" in self.dataset:
             if include_reject:
                 return ['reject', 'x', 'vel_x', 'kinetic energy', 'potential energy', 'total energy']
             else:
                 return ['x', 'vel_x', 'kinetic energy', 'potential energy', 'total energy']
-        elif self.dataset == "double_pendulum":
+        elif "double_pendulum" in self.dataset:
             if include_reject:
                 return ['reject', 'theta_1', 'vel_theta_1', 'theta_2', 'vel_theta_2', 'kinetic energy', 'potential energy', 'total energy']
             else:
                 return ['theta_1', 'vel_theta_1', 'theta_2', 'vel_theta_2', 'kinetic energy', 'potential energy', 'total energy']
-        elif self.dataset == "cylindrical_flow":
+        elif "cylindrical_flow" in self.dataset:
             if include_reject:
                 return ['reject', 'total energy']
             else:

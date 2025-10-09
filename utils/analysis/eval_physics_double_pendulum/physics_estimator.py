@@ -7,7 +7,6 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 
 # physical parameters
-fps = 60 # frames per second
 L1, L2 = 0.205, 0.179  # pendulum rod lengths (m)
 w1, w2 = 0.038, 0.038  # pendulum rod widths (m)
 m1, m2 = 0.262, 0.110  # bob masses (kg)
@@ -41,7 +40,7 @@ using numerical differentiation.
 method='fd': finite difference;
 method='spline': cubic spline fitting.
 '''
-def calc_velocity(th, method='spline'):
+def calc_velocity(th, method='spline', fps=60):
     len_seq = th.shape[0]
 
     # isolated data

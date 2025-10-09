@@ -512,6 +512,9 @@ def time_variation(args, new_steps=1200, num_videos=6, video_len=2, steps=120, d
     defaultStep_trajectories = sort_trajectories(defaultStep_trajectories, damped_model.equilibrium.clone().detach().cpu().numpy())
     plot_with_gradField(defaultStep_trajectories, save_path, undamped_model, video_len / steps, 'defaultStep_trajectories.png', damped_model.equilibrium.clone().detach().cpu().numpy(), data_min, data_max)
 
+    np.save(os.path.join(save_path, "newStep_trajectories.npy"), newStep_trajectories)
+    np.save(os.path.join(save_path, "defaultStep_trajectories.npy"), defaultStep_trajectories)
+    
     new_start_step = new_steps//2
     new_image_files = [str(p+new_start_step)+'_m.png' for p in range(20)]
     default_start_step = steps//2
@@ -775,101 +778,102 @@ def detect_chaos(args, specific=False):
 
     trajectories = trajectories_from_data_ids(ids_test, nsv_test)
     
-    save_path_base = os.path.join(args.output_dir, args.dataset, "downstream", model_name, 'chaos_specific' if specific else 'chaos')
+    #save_path_base = os.path.join(args.output_dir, args.dataset, "downstream", model_name, 'chaos_specific' if specific else 'chaos')
+    save_path_base = os.path.join(args.output_dir, args.dataset, "downstream", model_name, 'chaos_specific_video' if specific else 'chaos')
     mkdir(save_path_base)
 
-    occupancy_path = os.path.join(save_path_base, 'occupancy')
-    mkdir(occupancy_path)
-    traj_ratio_visited_cells = {}
-    total_traj_ratio_visited_cells = {}
+    # occupancy_path = os.path.join(save_path_base, 'occupancy')
+    # mkdir(occupancy_path)
+    # traj_ratio_visited_cells = {}
+    # total_traj_ratio_visited_cells = {}
 
-    lengths = []
-    mkdir(os.path.join(occupancy_path, 'visit_ratio'))
-    mkdir(os.path.join(occupancy_path, '3d_plots'))
+    # lengths = []
+    # mkdir(os.path.join(occupancy_path, 'visit_ratio'))
+    # mkdir(os.path.join(occupancy_path, '3d_plots'))
 
-    all_traj_fig = go.Figure()
+    # all_traj_fig = go.Figure()
     dt = 1/60 
-    for i in trajectories.keys():
+    # for i in trajectories.keys():
 
-        visited_cells, ratio_visited_cells = calculate_trajectory_occupancy(trajectories[i], data_max, data_min, grid_size)
+    #     visited_cells, ratio_visited_cells = calculate_trajectory_occupancy(trajectories[i], data_max, data_min, grid_size)
         
-        traj_ratio_visited_cells[i] = ratio_visited_cells
-        total_traj_ratio_visited_cells[i] = ratio_visited_cells[-1]
-        steps = ratio_visited_cells.shape[0]
-        lengths.append(steps)
-        t = np.linspace(dt,dt*(steps), steps)
+    #     traj_ratio_visited_cells[i] = ratio_visited_cells
+    #     total_traj_ratio_visited_cells[i] = ratio_visited_cells[-1]
+    #     steps = ratio_visited_cells.shape[0]
+    #     lengths.append(steps)
+    #     t = np.linspace(dt,dt*(steps), steps)
 
-        all_traj_fig.add_trace(go.Scatter(x=t, y=ratio_visited_cells, mode='lines', line=dict(color=cols[0], width=5),showlegend=False))
+    #     all_traj_fig.add_trace(go.Scatter(x=t, y=ratio_visited_cells, mode='lines', line=dict(color=cols[0], width=5),showlegend=False))
 
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=t, y=ratio_visited_cells, mode='lines', line=dict(color=cols[0], width=5),showlegend=False))
-        #fig.update_yaxes(title=f"<b>Visited %</b>", tickmode='auto')
-        fig.update_yaxes(tickmode='auto')
-        #fig.update_xaxes(title="<b>Time (s)</b>", range=[dt,dt*(steps)], nticks=6)
-        fig.update_xaxes(range=[dt,dt*(steps)], nticks=6)
-        update_figure(fig, True)
-        fig.write_image(os.path.join(occupancy_path, 'visit_ratio', f"{i}.png"), scale=4)
+    #     fig = go.Figure()
+    #     fig.add_trace(go.Scatter(x=t, y=ratio_visited_cells, mode='lines', line=dict(color=cols[0], width=5),showlegend=False))
+    #     #fig.update_yaxes(title=f"<b>Visited %</b>", tickmode='auto')
+    #     fig.update_yaxes(tickmode='auto')
+    #     #fig.update_xaxes(title="<b>Time (s)</b>", range=[dt,dt*(steps)], nticks=6)
+    #     fig.update_xaxes(range=[dt,dt*(steps)], nticks=6)
+    #     update_figure(fig, True)
+    #     fig.write_image(os.path.join(occupancy_path, 'visit_ratio', f"{i}.png"), scale=4)
 
-        traj = trajectories[i]
-        fig = go.Figure()
-        fig.add_trace(go.Scatter3d(x=traj[:,0], y=traj[:,1], z=traj[:,2], mode='lines',
-                        line=dict(color=cols[0], width=5)
-                    ))
+    #     traj = trajectories[i]
+    #     fig = go.Figure()
+    #     fig.add_trace(go.Scatter3d(x=traj[:,0], y=traj[:,1], z=traj[:,2], mode='lines',
+    #                     line=dict(color=cols[0], width=5)
+    #                 ))
         
-        fig.add_trace(go.Cone(sizeref=5, anchor='tip', showscale=False, colorscale=[[0, cols[0]], [1,cols[0]]], x=traj[0:1,0], y=traj[0:1,1], z=traj[0:1,2], u=traj[1:2,0]-traj[0:1,0], v=traj[1:2,1]-traj[0:1,1], w=traj[1:2,2]-traj[0:1,2]))
+    #     fig.add_trace(go.Cone(sizeref=5, anchor='tip', showscale=False, colorscale=[[0, cols[0]], [1,cols[0]]], x=traj[0:1,0], y=traj[0:1,1], z=traj[0:1,2], u=traj[1:2,0]-traj[0:1,0], v=traj[1:2,1]-traj[0:1,1], w=traj[1:2,2]-traj[0:1,2]))
 
-        # fig.update_layout(#title=f'video no. {vid_idx}', 
-        #                     scene=dict(aspectratio=dict(x=1, y=1, z=1),
-        #                     xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-        #                     yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
-        #                     zaxis=dict(title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)), showlegend=False)
-        fig.update_layout(scene=dict(aspectratio=dict(x=1, y=1, z=1),
-                            xaxis=dict(title='', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                            yaxis=dict(title='', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
-                            zaxis=dict(title='', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)), showlegend=False)
+    #     # fig.update_layout(#title=f'video no. {vid_idx}', 
+    #     #                     scene=dict(aspectratio=dict(x=1, y=1, z=1),
+    #     #                     xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+    #     #                     yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+    #     #                     zaxis=dict(title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)), showlegend=False)
+    #     fig.update_layout(scene=dict(aspectratio=dict(x=1, y=1, z=1),
+    #                         xaxis=dict(title='', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+    #                         yaxis=dict(title='', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+    #                         zaxis=dict(title='', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)), showlegend=False)
             
-        update_figure_3d(fig, True)
-        fig.write_image(os.path.join(occupancy_path, '3d_plots', f"{i}.png"), scale=4)
+    #     update_figure_3d(fig, True)
+    #     fig.write_image(os.path.join(occupancy_path, '3d_plots', f"{i}.png"), scale=4)
     
-    # all_traj_fig.update_yaxes(title=f"<b>Visited %</b>", tickmode='auto')
-    all_traj_fig.update_yaxes( tickmode='auto')
-    #all_traj_fig.update_xaxes(title="<b>Time (s)</b>", range=[dt,dt*(steps)], nticks=6)
-    all_traj_fig.update_xaxes(range=[dt,dt*(steps)], nticks=6)
-    all_traj_fig.update_xaxes(range=[dt,dt*(steps)], nticks=6)
-    update_figure(all_traj_fig, False)
-    all_traj_fig.write_image(os.path.join(occupancy_path, 'visit_ratio', f"all_traj.png"), scale=4)
+    # # all_traj_fig.update_yaxes(title=f"<b>Visited %</b>", tickmode='auto')
+    # all_traj_fig.update_yaxes( tickmode='auto')
+    # #all_traj_fig.update_xaxes(title="<b>Time (s)</b>", range=[dt,dt*(steps)], nticks=6)
+    # all_traj_fig.update_xaxes(range=[dt,dt*(steps)], nticks=6)
+    # all_traj_fig.update_xaxes(range=[dt,dt*(steps)], nticks=6)
+    # update_figure(all_traj_fig, False)
+    # all_traj_fig.write_image(os.path.join(occupancy_path, 'visit_ratio', f"all_traj.png"), scale=4)
     
-    np.save(os.path.join(occupancy_path, 'trajectories.npy'), trajectories)
-    np.save(os.path.join(occupancy_path, 'traj_ratio_visited_cells.npy'), traj_ratio_visited_cells)
-    np.save(os.path.join(occupancy_path, 'total_traj_ratio_visited_cells.npy'), total_traj_ratio_visited_cells)
+    # np.save(os.path.join(occupancy_path, 'trajectories.npy'), trajectories)
+    # np.save(os.path.join(occupancy_path, 'traj_ratio_visited_cells.npy'), traj_ratio_visited_cells)
+    # np.save(os.path.join(occupancy_path, 'total_traj_ratio_visited_cells.npy'), total_traj_ratio_visited_cells)
     
-    if 'double_pendulum' in args.dataset:
-        lengths = np.array(lengths)
-        kmeans = KMeans(n_clusters=2)
-        scaled_total_traj_ratio_visited_cells = np.array(list(total_ratio / (dt*lengths[i]) for i, total_ratio in total_traj_ratio_visited_cells.items()))
+    # if 'double_pendulum' in args.dataset:
+    #     lengths = np.array(lengths)
+    #     kmeans = KMeans(n_clusters=2)
+    #     scaled_total_traj_ratio_visited_cells = np.array(list(total_ratio / (dt*lengths[i]) for i, total_ratio in total_traj_ratio_visited_cells.items()))
 
-        kmeans.fit(scaled_total_traj_ratio_visited_cells.reshape(-1,1))
-        print("Cluster Centers: ", kmeans.cluster_centers_)
-        separating_threshold = np.mean(kmeans.cluster_centers_)
-        print("Separating Threshold: ", separating_threshold)
+    #     kmeans.fit(scaled_total_traj_ratio_visited_cells.reshape(-1,1))
+    #     print("Cluster Centers: ", kmeans.cluster_centers_)
+    #     separating_threshold = np.mean(kmeans.cluster_centers_)
+    #     print("Separating Threshold: ", separating_threshold)
         
-        count_chaotic = 0
-        count_periodic = 0
-        traj_chaotic = {}
-        for i in trajectories.keys():
+    #     count_chaotic = 0
+    #     count_periodic = 0
+    #     traj_chaotic = {}
+    #     for i in trajectories.keys():
             
-            traj_chaotic[i] = is_chaotic(scaled_total_traj_ratio_visited_cells[i], threshold=separating_threshold)
-            #label = kmeans.predict(np.array([scaled_total_traj_ratio_visited_cells[i]]).reshape(-1,1))[0]
+    #         traj_chaotic[i] = is_chaotic(scaled_total_traj_ratio_visited_cells[i], threshold=separating_threshold)
+    #         #label = kmeans.predict(np.array([scaled_total_traj_ratio_visited_cells[i]]).reshape(-1,1))[0]
 
-            if not traj_chaotic[i] == 1:
-                count_periodic += 1
-            else:
-                count_chaotic += 1
-        assert(count_chaotic + count_periodic == len(traj_chaotic))
-        print(f"Percentage Trajectory Chaotic: {100 * count_chaotic/len(traj_chaotic)} %")
-        print(f"Percentage Trajectory Periodic: {100 * count_periodic/len(traj_chaotic)} %")
+    #         if not traj_chaotic[i] == 1:
+    #             count_periodic += 1
+    #         else:
+    #             count_chaotic += 1
+    #     assert(count_chaotic + count_periodic == len(traj_chaotic))
+    #     print(f"Percentage Trajectory Chaotic: {100 * count_chaotic/len(traj_chaotic)} %")
+    #     print(f"Percentage Trajectory Periodic: {100 * count_periodic/len(traj_chaotic)} %")
 
-        np.save(os.path.join(occupancy_path, 'traj_chaotic.npy'), traj_chaotic)
+    #     np.save(os.path.join(occupancy_path, 'traj_chaotic.npy'), traj_chaotic)
 
     ini_err = {}
     pred_len = 600
@@ -888,7 +892,8 @@ def detect_chaos(args, specific=False):
         ini_err[sel] = np.linalg.norm(trajectories[sel[0]][sel[2]] - trajectories[sel[1]][sel[3]])
         sorted_ini_err = list(sorted(ini_err.items(), key=lambda x:x[1], reverse=False))
 
-    comparison_path = os.path.join(save_path_base, 'comparisons')
+    #comparison_path = os.path.join(save_path_base, 'comparisons')
+    comparison_path = os.path.join(save_path_base, 'comparisons_video')
     mkdir(comparison_path)
     
     visited_pairs = set()
@@ -902,7 +907,9 @@ def detect_chaos(args, specific=False):
             save_name = f'ini {err} {i1}_{t1} vs {i2}_{t2}'
 
             trajectory_pairs[(i1, i2)]= np.stack([trajectories[i1][t1:t1+pred_len], trajectories[i2][t2:t2+pred_len]], axis=0)
-            visualize_trajectory_chaos(trajectories[i1][t1:t1+pred_len], trajectories[i2][t2:t2+pred_len], comparison_path, save_name, data_max, data_min, grid_size, dt)
+            #visualize_trajectory_chaos(trajectories[i1][t1:t1+pred_len], trajectories[i2][t2:t2+pred_len], comparison_path, save_name, data_max, data_min, grid_size, dt)
+
+            visualize_trajectory_chaos_video(trajectories[i1][t1:t1+pred_len], trajectories[i2][t2:t2+pred_len], comparison_path, save_name, data_max, data_min, grid_size, dt)
 
             #plot_occupancy(trajectories[i1][t1:t1+pred_len], trajectories[i2][t2:t2+pred_len], comparison_path, save_name, data_max, data_min, grid_size)
 
@@ -965,16 +972,16 @@ def plot_trajectory_pair(traj1, traj2, save_path, save_name, data_full_max, dt):
         fig.add_trace(go.Cone(sizeref=5, anchor='tip', showscale=False, colorscale=[[0, cols[0]], [1,cols[0]]], x=traj1[0:1,0], y=traj1[0:1,1], z=traj1[0:1,2], u=traj1[1:2,0]-traj1[0:1,0], v=traj1[1:2,1]-traj1[0:1,1], w=traj1[1:2,2]-traj1[0:1,2]))
         fig.add_trace(go.Cone(sizeref=5, anchor='tip',showscale=False, colorscale=[[0, cols[1]], [1,cols[1]]], x=traj2[0:1,0], y=traj2[0:1,1], z=traj2[0:1,2], u=traj2[1:2,0]-traj2[0:1,0], v=traj2[1:2,1]-traj2[0:1,1], w=traj2[1:2,2]-traj2[0:1,2]))
 
+        fig.update_layout(#title=f'video no. {vid_idx}, 
+                            scene=dict(aspectratio=dict(x=1, y=1, z=1),
+                            xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                            yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                            zaxis=dict(title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)), showlegend=False)
         # fig.update_layout(#title=f'video no. {vid_idx}', 
         #                     scene=dict(aspectratio=dict(x=1, y=1, z=1),
-        #                     xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-        #                     yaxis=dict(title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
-        #                     zaxis=dict(title='<b>V3</b>', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)), showlegend=False)
-        fig.update_layout(#title=f'video no. {vid_idx}', 
-                            scene=dict(aspectratio=dict(x=1, y=1, z=1),
-                            xaxis=dict(title='', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                            yaxis=dict(title='', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
-                            zaxis=dict(title='', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)), showlegend=False)
+        #                     xaxis=dict(title='', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+        #                     yaxis=dict(title='', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+        #                     zaxis=dict(title='', range=[-1.1*data_full_max[2], 1.1*data_full_max[2]], tickmode='linear', tick0 = int(10*data_full_max[2])/10, dtick=int(10*data_full_max[2])/10)), showlegend=False)
             
         update_figure_3d(fig, True)
     else:
@@ -998,27 +1005,29 @@ def plot_trajectory_pair(traj1, traj2, save_path, save_name, data_full_max, dt):
                 angle=35,
                 color=cols[1]
             )))
-        # fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-        #                 yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
-        #                 showlegend=False)
-        fig.update_layout(xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                        yaxis=dict(scaleanchor="x", scaleratio=1, range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+        fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                        yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
                         showlegend=False)
+        # fig.update_layout(xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+        #                 yaxis=dict(scaleanchor="x", scaleratio=1, range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+        #                 showlegend=False)
         update_figure(fig, True)
 
-    fig.write_image(os.path.join(save_path, f'{save_name}.png'), scale=4)
+    #fig.write_image(os.path.join(save_path, f'{save_name}.png'), scale=4)
+    fig.write_image(os.path.join(save_path, f'3d/{save_name}.png'), scale=4)
 
     steps = traj1.shape[0]
     fig = make_subplots(rows=4, cols=1)
     for i in range(traj1.shape[1]):
         fig.add_trace(go.Scatter(x=np.linspace(0,dt*(steps-1), steps), y=traj1[:,i], mode='lines', line=dict(color=cols[i], width=5),showlegend=False), row=i+1, col=1)
         fig.add_trace(go.Scatter(x=np.linspace(0,dt*(steps-1), steps), y=traj2[:,i], mode='lines', line=dict(color=cols[i], dash="dot", width=5),showlegend=False), row=i+1, col=1)
-        #fig.update_yaxes(row=i+1, col=1, title=f"<b>V{i+1}</b>", range=[-1.1*data_full_max[i], 1.1*data_full_max[i]], tickmode='linear', tick0 = int(10*data_full_max[i])/10, dtick=int(10*data_full_max[i])/10)
-        fig.update_yaxes(row=i+1, col=1, range=[-1.1*data_full_max[i], 1.1*data_full_max[i]], tickmode='linear', tick0 = int(10*data_full_max[i])/10, dtick=int(10*data_full_max[i])/10)
-        fig.update_xaxes(row=i+1, col=1, range=[0,dt*(steps)], nticks=6) #, showticklabels=(i == traj1.shape[1] - 1))
-    # fig.update_xaxes(row=4, col=1, title="<b>Time (s)</b>")
+        fig.update_yaxes(row=i+1, col=1, title=f"<b>V{i+1}</b>", range=[-1.1*data_full_max[i], 1.1*data_full_max[i]], tickmode='linear', tick0 = int(10*data_full_max[i])/10, dtick=int(10*data_full_max[i])/10)
+        #fig.update_yaxes(row=i+1, col=1, range=[-1.1*data_full_max[i], 1.1*data_full_max[i]], tickmode='linear', tick0 = int(10*data_full_max[i])/10, dtick=int(10*data_full_max[i])/10)
+        #fig.update_xaxes(row=i+1, col=1, range=[0,dt*(steps)], nticks=6) #, showticklabels=(i == traj1.shape[1] - 1))
+        fig.update_xaxes(row=i+1, col=1, range=[0,dt*(600)], title="<b>Time (s)</b>" if i == 3 else None)
     update_figure_small(fig, True)
-    fig.write_image(os.path.join(save_path, f"{save_name}_p.png"), scale=4)
+    #fig.write_image(os.path.join(save_path, f"{save_name}_p.png"), scale=4)
+    fig.write_image(os.path.join(save_path, f"time_series/{save_name}.png"), scale=4)
 
     return
 
@@ -1029,13 +1038,14 @@ def plot_perturbation(traj1, traj2, save_path, save_name, dt):
     perturbation = np.sqrt(np.sum((traj1 - traj2)**2, axis=1))
     steps = perturbation.shape[0]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=np.linspace(0,dt*(steps-1), steps), y=perturbation, mode='lines', line=dict(color=cols[0], width=5),showlegend=False))
-    # fig.update_yaxes(title=f"<b>Difference</b>", tickmode='auto')
-    fig.update_yaxes(tickmode='auto')
-    # fig.update_xaxes(title="<b>Time (s)</b>", range=[0,dt*(steps)], nticks=6)
-    fig.update_xaxes(range=[0,dt*(steps)], nticks=6)
+    fig.add_trace(go.Scatter(x=np.linspace(0,dt*(steps-1), steps), y=perturbation/perturbation[0], mode='lines', line=dict(color=cols[0] if 'chaotic' in save_path else cols[2], width=5),showlegend=False))
+    fig.update_yaxes(title=f"<b>Divergence</b>", range=[0, 70], nticks=4)
+    # fig.update_yaxes(tickmode='auto')
+    fig.update_xaxes(title="<b>Time (s)</b>", range=[0,dt*(600)], nticks=6)
+    #fig.update_xaxes(range=[0,dt*(steps)], nticks=6)
     update_figure(fig, True)
-    fig.write_image(os.path.join(save_path, f"{save_name}_e.png"), scale=4)
+    #fig.write_image(os.path.join(save_path, f"{save_name}_e.png"), scale=4)
+    fig.write_image(os.path.join(save_path, f"{save_name}.png"), scale=4)
 
     return
 
@@ -1050,19 +1060,45 @@ def plot_occupancy(traj1, traj2, save_path, save_name, data_max, data_min, N, dt
     fig = make_subplots(rows=2, cols=1)
     fig.add_trace(go.Scatter(x=np.linspace(dt,dt*(steps), steps), y=ratio_visited_cells_1, mode='lines', line=dict(color=cols[0], width=5),showlegend=False), row=1, col=1)
     fig.add_trace(go.Scatter(x=np.linspace(dt,dt*(steps), steps), y=ratio_visited_cells_2, mode='lines', line=dict(color=cols[1], width=5),showlegend=False), row=2, col=1)
-    # fig.update_yaxes(row=1, col=1, title=f"<b>Domain Visited %</b>", tickmode='auto')
-    fig.update_yaxes(row=1, col=1, tickmode='auto')
-    # fig.update_yaxes(row=2, col=1, title=f"<b>Domain Visited %</b>", tickmode='auto')
-    fig.update_yaxes(row=2, col=1, tickmode='auto')
-    fig.update_xaxes(row=1, col=1, range=[dt,dt*(steps)], nticks=6) #, showticklabels=False)
-    #fig.update_xaxes(row=2, col=1, range=[dt,dt*(steps)], title="<b>Time (s)</b>", nticks=6)
-    fig.update_xaxes(row=2, col=1, range=[dt,dt*(steps)], nticks=6)
+    fig.update_yaxes(row=1, col=1, title=f"<b>Coverage (%)</b>", range=[0,4], tickmode='auto')
+    #fig.update_yaxes(row=1, col=1, tickmode='auto')
+    fig.update_yaxes(row=2, col=1, title=f"<b>Coverage (%)</b>", range=[0,4], tickmode='auto')
+    #fig.update_yaxes(row=2, col=1, tickmode='auto')
+    #fig.update_xaxes(row=1, col=1, range=[dt,dt*(steps)], nticks=6) #, showticklabels=False)
+    fig.update_xaxes(row=1, col=1, range=[dt,dt*(600)], nticks=6)
+    fig.update_xaxes(row=2, col=1, range=[dt,dt*(600)], title="<b>Time (s)</b>", nticks=6)
+    #fig.update_xaxes(row=2, col=1, range=[dt,dt*(steps)], nticks=6)
     update_figure_small(fig, True)
-    fig.write_image(os.path.join(save_path, f"{save_name}_occupancy.png"), scale=4)
+    #fig.write_image(os.path.join(save_path, f"{save_name}_occupancy.png"), scale=4)
+    fig.write_image(os.path.join(save_path, f"{save_name}.png"), scale=4)
 
     return 
 
+def plot_eq_distance(traj1, traj2, save_path, save_name, data_max, data_min, equilibrium_2):
 
+    data_range_2 = np.sqrt(np.sum((data_max - data_min)**2))
+
+    periodic_eq_distance_2 = []
+    eq_distance = 100*np.sqrt(np.sum((traj1 - equilibrium_2.reshape(1,-1))**2, axis=1))/data_range_2
+    periodic_eq_distance_2.append(eq_distance)
+    eq_distance = 100*np.sqrt(np.sum((traj2 - equilibrium_2.reshape(1,-1))**2, axis=1))/data_range_2
+    periodic_eq_distance_2.append(eq_distance)
+    periodic_eq_distance_2 = np.concatenate(periodic_eq_distance_2, axis=0)
+
+    fig = go.Figure()
+    y_max = 39 if 'chaotic' in save_path else 79
+    fig.add_trace(go.Histogram(x=periodic_eq_distance_2,  xbins_start=0, xbins_end=70, xbins_size=0.5, marker_color=cols[0] if 'chaotic' in save_path else cols[2]))
+    #fig.update_yaxes(title=f"<b>Count</b>", range=[0, y_max], tickmode='auto', nticks=5)
+    fig.update_xaxes(range=[0,70], ticktext = [f'<b>{t}</b>' for t in range(0,80,10)], tickvals = list(range(0,80,10)), tickmode='array')
+    fig.update_yaxes(title=f"<b>Count</b>",  range=[0,y_max], tickmode='auto', nticks=5)
+    #fig.update_xaxes(range=[0,70], tickmode='linear', tick0=0, dtick=10)
+    update_figure(fig, True)
+    fig.update_layout(showlegend=False)
+    fig.write_image(os.path.join(save_path, f"{save_name}.png"), scale=4)
+
+    return 
+
+    
 def visualize_trajectory_chaos(traj1, traj2, save_path, save_name, data_max, data_min, grid_size, dt):
 
     
@@ -1151,6 +1187,67 @@ def visualize_trajectory_chaos(traj1, traj2, save_path, save_name, data_max, dat
 
     plot_occupancy(traj1, traj2, save_path, save_name, data_max, data_min, grid_size, dt)
 
+def visualize_trajectory_chaos_video(traj1, traj2, save_path, save_name, data_max, data_min, grid_size, dt):
+
+    data_full_max = np.stack([np.abs(data_min), data_max], axis=0).max(axis=0)
+
+    eq_path_2 = 'outputs/double_pendulum/tasks/regressDeeper_2_smooth_2_high-dim-latent_1.0_cyclic-neighbor-distance-2_16_sinkhorn_8_True_filtered/mlp_equilibrium/eq_points.npy'
+    eqs_2 = np.load(eq_path_2, allow_pickle=True).item()
+
+    equilibrium_2 = None
+    for i, s in enumerate(eqs_2['stabilities']):
+        if s == "stable":
+            equilibrium_2 = eqs_2['roots'][i]
+            break
+
+    save_name = 'chaotic' if '58' in save_name else 'periodic'
+    mkdir(os.path.join(save_path, save_name))
+    mkdir(os.path.join(save_path, save_name, 'traj_pair'))
+    mkdir(os.path.join(save_path, save_name, 'traj_pair', '3d'))
+    mkdir(os.path.join(save_path, save_name, 'traj_pair', 'time_series'))
+    mkdir(os.path.join(save_path, save_name, 'perturbation_pair'))
+    mkdir(os.path.join(save_path, save_name, 'occupancy_pair'))
+    mkdir(os.path.join(save_path, save_name, 'eq_distance'))
+    steps = traj1.shape[0]
+    for t in range(steps):
+        plot_trajectory_pair(traj1[:t+1], traj2[:t+1], os.path.join(save_path, save_name, 'traj_pair'), f"{t}", data_full_max, dt)
+        # plot_perturbation(traj1[:t+1], traj2[:t+1],  os.path.join(save_path, save_name,'perturbation_pair'), f"{t}", dt)
+        # plot_occupancy(traj1[:t+1], traj2[:t+1],  os.path.join(save_path, save_name, 'occupancy_pair'), f"{t}", data_max, data_min, grid_size, dt)
+        # plot_eq_distance(traj1[:t+1], traj2[:t+1],  os.path.join(save_path, save_name, 'eq_distance'), f"{t}", data_max, data_min, equilibrium_2)
+
+    mkdir(os.path.join(save_path, save_name, 'images'))
+    mkdir(os.path.join(save_path, save_name, 'images/vid_1'))
+    mkdir(os.path.join(save_path, save_name, 'images/vid_2'))
+
+    if save_name == 'chaotic':
+        for i in range(steps):
+            src_path = os.path.join('./data/double_pendulum_long_sequence', f"58/{4+i}.png")
+            dst_path = os.path.join(save_path, save_name, f'images/vid_1/{i}.png')
+            os.system(f'cp {src_path} {dst_path}')
+
+            src_path = os.path.join('./data/double_pendulum_long_sequence', f"60/{30+i}.png")
+            dst_path = os.path.join(save_path, save_name, f'images/vid_2/{i}.png')
+            os.system(f'cp {src_path} {dst_path}')
+    else:
+        for i in range(steps):
+            src_path = os.path.join('./data/double_pendulum_long_sequence', f"41/{35+i}.png")
+            dst_path = os.path.join(save_path, save_name, f'images/vid_1/{i}.png')
+            os.system(f'cp {src_path} {dst_path}')
+
+            src_path = os.path.join('./data/double_pendulum_long_sequence', f"46/{34+i}.png")
+            dst_path = os.path.join(save_path, save_name, f'images/vid_2/{i}.png')
+            os.system(f'cp {src_path} {dst_path}')
+
+    generate_video(os.path.join(save_path, save_name, 'traj_pair'), '3d', os.path.join(save_path, save_name, 'traj_pair', f'3d.mp4'))
+    generate_video(os.path.join(save_path, save_name, 'traj_pair'), 'time_series', os.path.join(save_path, save_name, 'traj_pair', f'time_series.mp4'))
+    # generate_video(os.path.join(save_path, save_name), 'perturbation_pair', os.path.join(save_path, save_name, f'perturbation_pair.mp4'))
+    # generate_video(os.path.join(save_path, save_name), 'occupancy_pair', os.path.join(save_path, save_name, f'occupancy_pair.mp4'))
+    # generate_video(os.path.join(save_path, save_name), 'eq_distance', os.path.join(save_path, save_name, f'eq_distance.mp4'))
+    generate_video(os.path.join(save_path, save_name, 'images'), 'vid_1', os.path.join(save_path, save_name, 'images', f'vid_1.mp4'))
+    generate_video(os.path.join(save_path, save_name, 'images'), 'vid_2', os.path.join(save_path, save_name, 'images', f'vid_2.mp4'))
+    
+
+
 
 def sort_trajectories(trajectories, equilibrium):
 
@@ -1168,6 +1265,8 @@ def main():
                     type=float, default=35)
     parser.add_argument('-epsilon', 
                     type=float, default=10)
+    parser.add_argument('-gamma', 
+                    type=int, default=1)
     parser.add_argument('-task', help='task type',
                     type=str, required=True)
     parser.add_argument('-config', help='config file path',
@@ -1181,7 +1280,7 @@ def main():
     args = munchify(cfg)
 
     if script_args.task ==  "damping":
-        return damping(args, damping=4, delta_percentage=script_args.delta)
+        return damping(args, damping=script_args.gamma, delta_percentage=script_args.delta)
     if script_args.task ==  "dt":
         return time_variation(args, delta_percentage=script_args.delta)
     if script_args.task == "chaos":

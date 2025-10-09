@@ -31,7 +31,10 @@ class VisDynamicsModel(pl.LightningModule):
                  **kwargs) -> None:
         super().__init__()
 
-        self.dt = 1/60 if model.dataset != 'cylindrical_flow' else .02
+        self.dt = 1/60 if 'cylindrical_flow' not in model.dataset else .02
+        if 'timeAblation' in model.dataset:
+            self.dt = self.dt * 2
+
         self.output_dir = output_dir
 
         self.model = model

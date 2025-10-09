@@ -138,6 +138,7 @@ def show_eq(smooth_models, data_path, dataset, steps=60, port=8002):
         num_eq = len(eqs[i]['validity'])
         n = 0
         roots = []
+        output_norms = []
         guesses = []
         jacobians = []
         eigenValues = []
@@ -159,6 +160,7 @@ def show_eq(smooth_models, data_path, dataset, steps=60, port=8002):
                 os.system(f'cp {src_path} {dst_path}')
 
                 roots.append(eqs[i]['roots'][j])
+                output_norms.append(eqs[i]['output_norms'][j] if 'output_norms' in eqs[i] and j < len(eqs[i]['output_norms']) else 0)
                 guesses.append(eqs[i]['guesses'][j])
                 jacobians.append(eqs[i]['jacobians'][j])
                 eigenValues.append(eqs[i]['eigenValues'][j])
@@ -171,6 +173,7 @@ def show_eq(smooth_models, data_path, dataset, steps=60, port=8002):
         eqs[i]['num_eq'] = n
         if n != 0:
             eqs[i]['roots'] = np.array(roots)
+            eqs[i]['output_norms'] = np.array(output_norms)
             eqs[i]['guesses'] = np.array(guesses)
             eqs[i]['jacobians'] = np.array(jacobians)
             eqs[i]['eigenValues'] = np.array(eigenValues)

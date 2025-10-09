@@ -8,7 +8,7 @@ import cv2
 from tqdm import tqdm
 
 
-def eval_physics_single_pendulum(frames):
+def eval_physics_single_pendulum(frames, fps=60):
 
     phys_vars_list =  ['reject', 'theta', 'vel_theta', 'kinetic energy', 'potential energy', 'total energy']
  
@@ -30,7 +30,7 @@ def eval_physics_single_pendulum(frames):
     vel_theta = np.zeros(num_frames)
     sub_ids = np.ma.clump_unmasked(np.ma.masked_array(theta, reject))
     for ids in sub_ids:
-        vel_theta[ids] = calc_velocity(theta[ids].copy())
+        vel_theta[ids] = calc_velocity(theta[ids].copy(), fps=fps)
     vel_theta[reject] = np.nan
     # calculate energies
     kinetic_energy, potential_energy, total_energy = calc_energy(theta, vel_theta)
@@ -48,7 +48,7 @@ def eval_physics_single_pendulum(frames):
 
     return phys, marked_images
 
-def eval_phys_data_single_pendulum(data_filepath, num_vids, num_frms, save_path, return_marked=False):
+def eval_phys_data_single_pendulum(data_filepath, num_vids, num_frms, save_path, return_marked=False, fps=60):
 
     phys_vars_list =  ['reject', 'theta', 'vel_theta', 'kinetic energy', 'potential energy', 'total energy']
 
@@ -66,7 +66,7 @@ def eval_phys_data_single_pendulum(data_filepath, num_vids, num_frms, save_path,
         for p in images:
             frame_p = cv2.imread(os.path.join(seq_filepath, p))
             frames.append(frame_p)
-        phys_tmp, m_i = eval_physics_single_pendulum(frames)
+        phys_tmp, m_i = eval_physics_single_pendulum(frames, fps)
         marked_images.append(m_i)
         for p_var in phys_vars_list:
             phys[p_var].append(phys_tmp[p_var])

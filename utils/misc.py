@@ -58,15 +58,15 @@ def get_experiment_dim_stats(dataset, model='encoder-decoder'):
 
 def get_experiment_dim(dataset, seed): 
 
-    if dataset == 'single_pendulum':
+    if 'single_pendulum' in dataset:
         return 2
-    if dataset == 'spring_mass':
+    if 'spring_mass' in dataset:
         return 2
-    if dataset == 'double_pendulum':
+    if 'double_pendulum' in dataset:
         return 4
-    if dataset == 'fire':
+    if 'fire' in dataset:
         return 24
-    if dataset == 'cylindrical_flow':
+    if 'cylindrical_flow' in dataset:
         return 3
 
 def create_name(args, **kwargs):

@@ -9,7 +9,7 @@ Certain images will be rejected if the mass does not exist or has a wrong shape.
 import cv2
 import os
 import numpy as np
-
+from PIL import ImageFont, ImageDraw, Image
 
 '''
 Extract the mass from the image.
@@ -127,10 +127,28 @@ def obtain_position(img):
         #cv2.arrowedLine(img_marked, arrow[0], arrow[1], (0, 0, 255), 1, tipLength=0.25)
         # mark the estimated angle in degrees
 
+        # if position != 0:
+        #     cv2.putText(img_marked, "{:.2f}".format(position), (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+        # else:
+        #     cv2.putText(img_marked, "0", (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+        
+        cv2.line(img_marked, (64,64), (64,128), (0, 0, 255), 1)
+
+        img_pil = Image.fromarray(img_marked)
+        draw = ImageDraw.Draw(img_pil)
+
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  
+
+        font = ImageFont.truetype(font_path, size=24)
+
+        # Draw the text using PIL
         if position != 0:
-            cv2.putText(img_marked, "{:.2f}".format(position), (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+            draw.text((5, 0),  "x=" + "{:.2f}".format(position) + "m", font=font, fill=(0, 0, 0))
         else:
-            cv2.putText(img_marked, "0", (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)
+            draw.text((5, 0),  "x=0m", font=font, fill=(0, 0, 0))
+
+        img_marked = np.asarray(img_pil)
+
     else:
         # mark the rejection
         cv2.putText(img_marked, 'Reject', (10, 25), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 0, 0), 2)

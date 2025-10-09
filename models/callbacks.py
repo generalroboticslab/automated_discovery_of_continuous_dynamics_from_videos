@@ -472,7 +472,7 @@ class SmoothnessEvaluator(Callback):
 
         return visualization
 
-    def visualize_nsv_embedding(self, phys_all, ids_test, nsv_test, task_log_dir, data_max, data_min):
+    def visualize_nsv_embedding(self, phys_all, ids_test, nsv_test, task_log_dir, data_max, data_min, collapsed=False):
         embedding_save_path = os.path.join(task_log_dir, 'nsv_embedding')
         mkdir(embedding_save_path)
 
@@ -484,14 +484,14 @@ class SmoothnessEvaluator(Callback):
         plots = []
         print('Visualizing NSV Embeddings')
         for p_var in tqdm(phys_vars_list):
-            plot = self.visualize_nsv(nsv_test_arr, phys_test[p_var], p_var, embedding_save_path, data_max, data_min)
+            plot = self.visualize_nsv(nsv_test_arr, phys_test[p_var], p_var, embedding_save_path, data_max, data_min, collapsed)
 
             plots.append((p_var, plot))
         
         return plots
 
 
-    def visualize_nsv(self, data, v, v_name, save_path, data_max, data_min):
+    def visualize_nsv(self, data, v, v_name, save_path, data_max, data_min, collapsed=False):
         num_components = data.shape[-1]
 
         data_full_max = np.stack([np.abs(data_min), data_max], axis=0).max(axis=0)
@@ -504,14 +504,15 @@ class SmoothnessEvaluator(Callback):
                 for j in range(i+1, num_components):
                     fig.add_trace(go.Scatter(x=data[:,i], y=data[:,j], mode='markers',
                                 marker=dict(size=4, color=v, colorbar=dict(title='',tickprefix="<b>",ticksuffix ="</b>", nticks=6),colorscale=colorscale)), row=j, col=i+1)
+                    
                     fig.update_xaxes(row=j, col=i+1, range=[-1.1*data_full_max[i], 1.1*data_full_max[i]], tickmode='linear', tick0 = int(10*data_full_max[i])/10, dtick=int(10*data_full_max[i])/10)
                     fig.update_yaxes(row=j, col=i+1, range=[-1.1*data_full_max[j], 1.1*data_full_max[j]], tickmode='linear', tick0 = int(10*data_full_max[j])/10, dtick=int(10*data_full_max[j])/10)
 
 
-                    if i == 0:
-                        fig.update_yaxes(title_text=f"<b>V{j+1}</b>",row=j, col=i+1)
-                    if j == num_components - 1:
-                        fig.update_xaxes(title_text=f"<b>V{i+1}</b>",row=j, col=i+1)
+                    # if i == 0:
+                    #     fig.update_yaxes(title_text=f"<b>V{j+1}</b>",row=j, col=i+1)
+                    # if j == num_components - 1:
+                    #     fig.update_xaxes(title_text=f"<b>V{i+1}</b>",row=j, col=i+1)
 
 
             fig.update_layout(showlegend=False)
@@ -522,9 +523,16 @@ class SmoothnessEvaluator(Callback):
             # fig.update_layout(xaxis=dict(title='<b>V1</b>', range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
             #             yaxis=dict(scaleanchor="x", scaleratio=1, title='<b>V2</b>', range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
             #             showlegend=False)
-            fig.update_layout(xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
-                        yaxis=dict(scaleanchor="x", scaleratio=1, range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
-                        showlegend=False)
+            if not collapsed:
+                fig.update_layout(xaxis=dict(range=[-1.1*data_full_max[0], 1.1*data_full_max[0]], tickmode='linear', tick0 = int(10*data_full_max[0])/10, dtick=int(10*data_full_max[0])/10),
+                            yaxis=dict(scaleanchor="x", scaleratio=1, range=[-1.1*data_full_max[1], 1.1*data_full_max[1]], tickmode='linear', tick0 = int(10*data_full_max[1])/10, dtick=int(10*data_full_max[1])/10),
+                            showlegend=False)
+            else:   
+                margin = 0.1 * (data_max - data_min) 
+                fig.update_layout(xaxis=dict(range=[data_min[0], data_max[0]], tickmode='linear', tick0 = 0.9, dtick=0.05),
+                            yaxis=dict(scaleanchor="x", scaleratio=1, range=[data_min[1] - margin[1], data_max[1] + margin[1]], tickmode='linear', tick0 = int(10*data_min[1])/10, dtick=int(50 * margin[1])/10),
+                            showlegend=False)
+            
             update_figure(fig, True)
         fig.write_image(os.path.join(save_path, v_name+'.png'), scale=4)
 
@@ -643,10 +651,20 @@ class SmoothnessEvaluator(Callback):
 
         data_file_path = os.path.join('./data', pl_module.model.dataset)
         physics_variable_path = os.path.join(data_file_path, 'phys_vars.npy')
+
+        if not os.path.exists(physics_variable_path):
+            evaluator = Physics_Evaluator(pl_module.model.dataset)
+            num_files = 0
+            for f in os.listdir(data_file_path):
+                if f.isdigit():
+                    num_files += 1
+            
+            num_frames = len(os.listdir(os.path.join(data_file_path, "0")))
+            evaluator.eval_physics(data_file_path, range(num_files), num_frames, physics_variable_path)
     
         phys_all = np.load(physics_variable_path, allow_pickle=True).item()
 
-        plots = self.visualize_nsv_embedding(phys_all, ids_test, nsv_test, task_log_dir, data_max, data_min)
+        plots = self.visualize_nsv_embedding(phys_all, ids_test, nsv_test, task_log_dir, data_max, data_min, collapsed=pl_module.smooth_loss_weight > 0 and pl_module.regularize_loss_weight == 0)
 
         images = []
         for cap, img in plots[3::4]:
@@ -1307,8 +1325,10 @@ class RegressEvaluator(Callback):
         # Candidations from Test Data
         indices = np.argsort(np.linalg.norm(output, axis=1))
         guesses = data[indices[:num_guesses]]
+        output_norms = np.linalg.norm(output, axis=1)[indices[:num_guesses]]
 
-        # Extra Candidates from grid
+
+        # Extra Candidates from grid    
         if pl_module.dataset == 'double_pendulum':
             g = np.mgrid[0:1:10j,0:1:10j,0:1:10j,0:1:10j]
             g =  data_min + nsv_range * np.transpose(g, (1,2,3,4,0)).reshape(-1,4)
@@ -1317,17 +1337,27 @@ class RegressEvaluator(Callback):
             g_indices = np.argsort(np.linalg.norm(g_output, axis=1))
             g_guesses = g[g_indices[:num_guesses]]
             guesses = np.concatenate([guesses, g_guesses], axis=0)
+            g_output_norms = np.linalg.norm(g_output, axis=1)[g_indices[:num_guesses]]
+
+            output_norms = np.concatenate([output_norms, g_output_norms], axis=0)
         # Candidates per trajectory
         if pl_module.dataset == 'cylindrical_flow':
 
             data_trajectories, output_trajectories = self.trajectories_from_data_ids(ids, data, output)
 
             guesses = []
+            output_norms = []
             traj_nums = []
 
             for traj in data_trajectories.keys():
+                
+                guess = np.array(data_trajectories[traj][-10:]).mean(axis=0)
+                guesses.append(guess)
+                
+                g_tensor = torch.tensor(guess.astype(np.float32)).to(pl_module.device)
+                g_output = pl_module.model(g_tensor).cpu().detach().numpy()
 
-                guesses.append(np.array(data_trajectories[traj][-10:]).mean(axis=0))
+                output_norms.append(np.linalg.norm(g_output))
                 traj_nums.append(traj)
 
         data_max = np.max(data, axis=0)
@@ -1417,6 +1447,7 @@ class RegressEvaluator(Callback):
         delta_per_epsilon, stabilities = self.eq_stability_analysis(initial_distances, distances, nsv_range, epsilon_percentages)
         eq_points = {"guesses": guesses,
                             "roots": roots,
+                            "output_norms": output_norms,
                             "stabilities": stabilities,
                             "eigenValues": eigenvals,
                             "jacobians": jacobians,
